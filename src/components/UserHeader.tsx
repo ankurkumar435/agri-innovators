@@ -1,26 +1,46 @@
-import React from 'react';
-import { MapPin, Bell, Menu } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { MapPin, Bell } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { AuthDropdown } from '@/components/AuthDropdown';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
-interface UserHeaderProps {
-  userName: string;
-  phoneNumber: string;
-  location: string;
-  avatarUrl?: string;
-}
+export const UserHeader: React.FC = () => {
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<any>(null);
 
-export const UserHeader: React.FC<UserHeaderProps> = ({
-  userName,
-  phoneNumber,
-  location,
-  avatarUrl
-}) => {
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+    }
+  }, [user]);
+
+  const fetchProfile = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (error) throw error;
+      setProfile(data);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
+
+  const userName = user ? (profile?.farmer_name || user.email?.split('@')[0] || 'User') : 'Guest User';
+  const phoneNumber = user ? (profile?.phone || 'No phone') : '+91 98765 43210';
+  const location = user ? (profile?.location || 'Location not set') : 'Punjabi Village, Punjab, India';
+
   return (
     <div className="bg-gradient-nature text-white p-4 rounded-b-3xl shadow-medium">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Avatar className="w-12 h-12 border-2 border-white/20">
-            <AvatarImage src={avatarUrl} alt={userName} />
             <AvatarFallback className="bg-white/20 text-white font-semibold">
               {userName.split(' ').map(n => n[0]).join('').toUpperCase()}
             </AvatarFallback>
@@ -34,7 +54,7 @@ export const UserHeader: React.FC<UserHeaderProps> = ({
         
         <div className="flex items-center gap-2">
           <Bell className="w-6 h-6 opacity-80" />
-          <Menu className="w-6 h-6 opacity-80" />
+          <AuthDropdown />
         </div>
       </div>
       

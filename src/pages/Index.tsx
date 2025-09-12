@@ -67,11 +67,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <UserHeader 
-        userName="Rajesh Kumar"
-        phoneNumber="+91 98765 43210"
-        location="Punjabi Village, Punjab, India"
-      />
+      <UserHeader />
 
       {activeTab === 'home' ? (
         <div className="p-4 space-y-6 pb-20">
