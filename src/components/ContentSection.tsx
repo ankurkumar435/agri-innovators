@@ -1,6 +1,7 @@
 import React from 'react';
 import { Lightbulb, Bug, Mountain, Cpu, Store, BarChart3, User, Scan, Bot } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { ChatBot } from '@/components/ChatBot';
 
 interface ContentSectionProps {
   activeTab: string;
@@ -95,40 +96,7 @@ export const ContentSection: React.FC<ContentSectionProps> = ({ activeTab }) => 
         );
 
       case 'ai-bot':
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 mb-4">
-              <Bot className="w-6 h-6 text-primary" />
-              <h2 className="text-xl font-bold text-foreground">AI Assistant</h2>
-            </div>
-            
-            <Card className="p-4 bg-gradient-sky border-0 text-white">
-              <div className="flex items-center gap-3 mb-3">
-                <Bot className="w-8 h-8" />
-                <div>
-                  <h3 className="font-semibold">FarmBot AI</h3>
-                  <p className="text-sm opacity-90">Your farming companion</p>
-                </div>
-              </div>
-              <p className="text-sm opacity-90">Ask me anything about farming, crops, weather, or market trends!</p>
-            </Card>
-
-            <Card className="p-4">
-              <h3 className="font-semibold mb-3 text-foreground">Quick Questions</h3>
-              <div className="space-y-2">
-                <button className="w-full text-left p-3 bg-muted rounded-lg text-sm hover:bg-muted/80">
-                  "What's the best time to plant rice?"
-                </button>
-                <button className="w-full text-left p-3 bg-muted rounded-lg text-sm hover:bg-muted/80">
-                  "How to prevent pest attacks?"
-                </button>
-                <button className="w-full text-left p-3 bg-muted rounded-lg text-sm hover:bg-muted/80">
-                  "Current market price for wheat?"
-                </button>
-              </div>
-            </Card>
-          </div>
-        );
+        return <ChatBot />;
 
       case 'profile':
         return (
