@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { MapPin, Bell } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { AuthDropdown } from '@/components/AuthDropdown';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -53,6 +54,7 @@ export const UserHeader: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-2">
+          <LanguageSwitcher />
           <Bell className="w-6 h-6 opacity-80" />
           <AuthDropdown />
         </div>
