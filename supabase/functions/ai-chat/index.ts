@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { HfInference } from 'https://esm.sh/@huggingface/inference@2.3.2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,23 +20,14 @@ serve(async (req) => {
       throw new Error('No message provided');
     }
 
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key not found');
+    const huggingFaceApiKey = Deno.env.get('HUGGINGFACE_API_KEY');
+    if (!huggingFaceApiKey) {
+      throw new Error('Hugging Face API key not found');
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `You are FarmBot AI, a helpful farming assistant specialized in agriculture, crop management, weather patterns, pest control, soil health, market trends, and sustainable farming practices. You provide practical, actionable advice to farmers. Keep responses concise but informative. Focus on:
+    const hf = new HfInference(huggingFaceApiKey);
+
+    const systemPrompt = `You are FarmBot AI, a helpful farming assistant specialized in agriculture, crop management, weather patterns, pest control, soil health, market trends, and sustainable farming practices. You provide practical, actionable advice to farmers. Keep responses concise but informative. Focus on:
 
 - Crop cultivation and best practices
 - Pest and disease management
@@ -45,26 +37,21 @@ serve(async (req) => {
 - Sustainable farming techniques
 - Equipment and technology recommendations
 
-Always be encouraging and supportive to farmers, understanding their challenges and providing solutions.`
-          },
-          {
-            role: 'user',
-            content: message
-          }
-        ],
-        max_tokens: 1000,
+Always be encouraging and supportive to farmers, understanding their challenges and providing solutions.`;
+
+    const fullPrompt = `${systemPrompt}\n\nUser: ${message}\nAssistant:`;
+
+    const response = await hf.textGeneration({
+      model: 'meta-llama/Llama-2-7b-chat-hf',
+      inputs: fullPrompt,
+      parameters: {
+        max_new_tokens: 1000,
         temperature: 0.7,
-      }),
+        return_full_text: false,
+      },
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('OpenAI API error:', errorText);
-      throw new Error(`OpenAI API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const reply = data.choices[0].message.content;
+    const reply = response.generated_text;
 
     return new Response(JSON.stringify({ reply }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
