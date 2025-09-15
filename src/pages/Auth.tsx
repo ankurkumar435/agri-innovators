@@ -16,6 +16,7 @@ const Auth = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [location, setLocation] = useState<string>('');
+  const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
   
   const [signUpData, setSignUpData] = useState({
     firstName: '',
@@ -42,6 +43,7 @@ const Auth = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
+          setCurrentLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
           try {
             const response = await fetch(
               `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${position.coords.latitude}&longitude=${position.coords.longitude}&localityLanguage=en`
@@ -59,14 +61,79 @@ const Auth = () => {
     }
   }, []);
 
+  const requestLocationPermission = async () => {
+    try {
+      if ('geolocation' in navigator) {
+        const permission = await navigator.permissions.query({ name: 'geolocation' });
+        
+        if (permission.state === 'granted') {
+          getCurrentLocation();
+        } else if (permission.state === 'prompt') {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const { latitude, longitude } = position.coords;
+              setCurrentLocation({ lat: latitude, lng: longitude });
+              fetchLocationDetails(latitude, longitude);
+            },
+            (error) => {
+              console.error('Geolocation error:', error);
+              toast({
+                title: 'Location Permission',
+                description: 'Location access denied. Weather will use default location.',
+                variant: 'destructive'
+              });
+            }
+          );
+        } else {
+          toast({
+            title: 'Location Permission',
+            description: 'Location access denied. Weather will use default location.',
+            variant: 'destructive'
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Permission request error:', error);
+    }
+  };
+
+  const getCurrentLocation = () => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setCurrentLocation({ lat: latitude, lng: longitude });
+        fetchLocationDetails(latitude, longitude);
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+      }
+    );
+  };
+
+  const fetchLocationDetails = async (latitude: number, longitude: number) => {
+    try {
+      const response = await fetch(
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+      );
+      const data = await response.json();
+      setLocation(`${data.city}, ${data.principalSubdivision}, ${data.countryName}`);
+    } catch (error) {
+      console.error('Error fetching location details:', error);
+      setLocation('Location details unavailable');
+    }
+  };
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
     try {
+      // Request location permission during signup
+      await requestLocationPermission();
+
       const redirectUrl = `${window.location.origin}/`;
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: signUpData.email,
         password: signUpData.password,
         options: {
@@ -81,6 +148,28 @@ const Auth = () => {
       });
 
       if (error) throw error;
+
+      if (data.user) {
+        // Store location data if available
+        if (currentLocation) {
+          const { error: locationError } = await supabase
+            .from('user_locations')
+            .insert([
+              {
+                user_id: data.user.id,
+                latitude: currentLocation.lat,
+                longitude: currentLocation.lng,
+                city: location.split(',')[0] || '',
+                region: location.split(',')[1] || '',
+                country: location.split(',')[2] || ''
+              }
+            ]);
+
+          if (locationError) {
+            console.error('Error saving location:', locationError);
+          }
+        }
+      }
       
       toast({ 
         title: 'Registration successful!', 

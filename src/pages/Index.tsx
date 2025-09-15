@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Lightbulb, Bug, Mountain, Cpu, MessageCircle, TrendingUp } from 'lucide-react';
 import { UserHeader } from '@/components/UserHeader';
 import { QuickActionCard } from '@/components/QuickActionCard';
@@ -8,11 +8,36 @@ import { MarketTrendsCard } from '@/components/MarketTrendsCard';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { ContentSection } from '@/components/ContentSection';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import farmHero from '@/assets/farm-hero.jpg';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('home');
   const { toast } = useToast();
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth');
+    }
+  }, [user, loading, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse">
+          <div className="h-8 bg-muted rounded mb-4 w-48"></div>
+          <div className="h-4 bg-muted rounded w-32"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   const quickActions = [
     {

@@ -47,34 +47,45 @@ export const WeatherCard: React.FC = () => {
   useEffect(() => {
     const fetchWeatherData = async () => {
       try {
-        // Get user's location (you could also get this from user profile)
+        setLoading(true);
+        // Get user's location from their profile or browser geolocation
         if ('geolocation' in navigator) {
           navigator.geolocation.getCurrentPosition(
             async (position) => {
               const { latitude, longitude } = position.coords;
               
-              const { data, error } = await supabase.functions.invoke('weather', {
-                body: { lat: latitude, lon: longitude }
-              });
+              try {
+                const { data, error } = await supabase.functions.invoke('weather', {
+                  body: { lat: latitude, lon: longitude }
+                });
 
-              if (error) {
-                throw error;
+                if (error) {
+                  console.error('Weather API error:', error);
+                  throw error;
+                }
+
+                setWeatherData(data);
+              } catch (error) {
+                console.error('Error calling weather function:', error);
+                await fetchDefaultWeather();
+              } finally {
+                setLoading(false);
               }
-
-              setWeatherData(data);
-              setLoading(false);
             },
-            (error) => {
+            async (error) => {
               console.error('Geolocation error:', error);
-              // Fallback to default location (you could use a city-based lookup)
-              fetchDefaultWeather();
+              await fetchDefaultWeather();
+            },
+            {
+              timeout: 10000,
+              enableHighAccuracy: false
             }
           );
         } else {
-          fetchDefaultWeather();
+          await fetchDefaultWeather();
         }
       } catch (error) {
-        console.error('Error fetching weather:', error);
+        console.error('Error in fetchWeatherData:', error);
         toast({
           title: 'Weather Error',
           description: 'Failed to fetch weather data',
@@ -92,13 +103,21 @@ export const WeatherCard: React.FC = () => {
         });
 
         if (error) {
+          console.error('Default weather API error:', error);
           throw error;
         }
 
-        setWeatherData(data);
-        setLoading(false);
+        if (data) {
+          setWeatherData(data);
+        }
       } catch (error) {
         console.error('Error fetching default weather:', error);
+        toast({
+          title: 'Weather Unavailable',
+          description: 'Unable to load weather data at this time',
+          variant: 'destructive'
+        });
+      } finally {
         setLoading(false);
       }
     };
