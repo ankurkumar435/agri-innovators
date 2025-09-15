@@ -1,25 +1,134 @@
-import React from 'react';
-import { Cloud, CloudRain, Sun, Droplets, Wind } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Cloud, CloudRain, Sun, Droplets, Wind, CloudSnow, CloudDrizzle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
+interface WeatherData {
+  current: {
+    temp: number;
+    condition: string;
+    humidity: number;
+    windSpeed: number;
+    icon: string;
+    main: string;
+  };
+  forecast: Array<{
+    day: string;
+    temp: number;
+    condition: string;
+    icon: string;
+  }>;
+}
 
 export const WeatherCard: React.FC = () => {
-  const weatherData = {
-    current: {
-      temp: 28,
-      condition: 'Partly Cloudy',
-      humidity: 65,
-      windSpeed: 12,
-      icon: Cloud
-    },
-    forecast: [
-      { day: 'Today', temp: 28, icon: Cloud },
-      { day: 'Tomorrow', temp: 26, icon: CloudRain },
-      { day: 'Fri', temp: 30, icon: Sun },
-      { day: 'Sat', temp: 29, icon: Cloud },
-    ]
+  const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  // Get weather icon component based on condition
+  const getWeatherIcon = (condition: string) => {
+    switch (condition?.toLowerCase()) {
+      case 'clear':
+        return Sun;
+      case 'clouds':
+        return Cloud;
+      case 'rain':
+        return CloudRain;
+      case 'drizzle':
+        return CloudDrizzle;
+      case 'snow':
+        return CloudSnow;
+      default:
+        return Cloud;
+    }
   };
 
-  const CurrentIcon = weatherData.current.icon;
+  useEffect(() => {
+    const fetchWeatherData = async () => {
+      try {
+        // Get user's location (you could also get this from user profile)
+        if ('geolocation' in navigator) {
+          navigator.geolocation.getCurrentPosition(
+            async (position) => {
+              const { latitude, longitude } = position.coords;
+              
+              const { data, error } = await supabase.functions.invoke('weather', {
+                body: { lat: latitude, lon: longitude }
+              });
+
+              if (error) {
+                throw error;
+              }
+
+              setWeatherData(data);
+              setLoading(false);
+            },
+            (error) => {
+              console.error('Geolocation error:', error);
+              // Fallback to default location (you could use a city-based lookup)
+              fetchDefaultWeather();
+            }
+          );
+        } else {
+          fetchDefaultWeather();
+        }
+      } catch (error) {
+        console.error('Error fetching weather:', error);
+        toast({
+          title: 'Weather Error',
+          description: 'Failed to fetch weather data',
+          variant: 'destructive'
+        });
+        setLoading(false);
+      }
+    };
+
+    const fetchDefaultWeather = async () => {
+      try {
+        // Default to New York coordinates as fallback
+        const { data, error } = await supabase.functions.invoke('weather', {
+          body: { lat: 40.7128, lon: -74.0060 }
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        setWeatherData(data);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching default weather:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchWeatherData();
+  }, [toast]);
+
+  if (loading) {
+    return (
+      <Card className="p-4 bg-gradient-sky border-0 text-white">
+        <div className="animate-pulse">
+          <div className="h-6 bg-white/20 rounded mb-2"></div>
+          <div className="h-4 bg-white/20 rounded mb-4"></div>
+          <div className="h-8 bg-white/20 rounded"></div>
+        </div>
+      </Card>
+    );
+  }
+
+  if (!weatherData) {
+    return (
+      <Card className="p-4 bg-gradient-sky border-0 text-white">
+        <div className="text-center">
+          <p>Weather data unavailable</p>
+        </div>
+      </Card>
+    );
+  }
+
+  const CurrentIcon = getWeatherIcon(weatherData.current.main);
 
   return (
     <Card className="p-4 bg-gradient-sky border-0 text-white">
@@ -51,7 +160,7 @@ export const WeatherCard: React.FC = () => {
 
         <div className="flex justify-between pt-2 border-t border-white/20">
           {weatherData.forecast.map((day) => {
-            const DayIcon = day.icon;
+            const DayIcon = getWeatherIcon(day.condition);
             return (
               <div key={day.day} className="text-center">
                 <div className="text-xs opacity-90">{day.day}</div>
