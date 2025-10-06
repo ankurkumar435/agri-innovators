@@ -45,18 +45,42 @@ export const WeatherCard: React.FC = () => {
   };
 
   useEffect(() => {
+    let cancelled = false;
+
+    const fetchDefaultWeather = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('weather', {
+          body: { lat: 40.7128, lon: -74.0060 },
+        });
+
+        if (error) {
+          console.error('Default weather API error:', error);
+          throw error;
+        }
+
+        if (!cancelled && data) setWeatherData(data);
+      } catch (error) {
+        console.error('Error fetching default weather:', error);
+        toast({
+          title: 'Weather Unavailable',
+          description: 'Weather data is not showing at this time.',
+          variant: 'destructive',
+        });
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
     const fetchWeatherData = async () => {
       try {
         setLoading(true);
-        // Get user's location from their profile or browser geolocation
         if ('geolocation' in navigator) {
           navigator.geolocation.getCurrentPosition(
             async (position) => {
               const { latitude, longitude } = position.coords;
-              
               try {
                 const { data, error } = await supabase.functions.invoke('weather', {
-                  body: { lat: latitude, lon: longitude }
+                  body: { lat: latitude, lon: longitude },
                 });
 
                 if (error) {
@@ -64,22 +88,19 @@ export const WeatherCard: React.FC = () => {
                   throw error;
                 }
 
-                setWeatherData(data);
-              } catch (error) {
-                console.error('Error calling weather function:', error);
+                if (!cancelled) setWeatherData(data);
+              } catch (err) {
+                console.error('Error calling weather function:', err);
                 await fetchDefaultWeather();
               } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
               }
             },
-            async (error) => {
-              console.error('Geolocation error:', error);
+            async (geoErr) => {
+              console.error('Geolocation error:', geoErr);
               await fetchDefaultWeather();
             },
-            {
-              timeout: 10000,
-              enableHighAccuracy: false
-            }
+            { timeout: 10000, enableHighAccuracy: false }
           );
         } else {
           await fetchDefaultWeather();
@@ -88,41 +109,20 @@ export const WeatherCard: React.FC = () => {
         console.error('Error in fetchWeatherData:', error);
         toast({
           title: 'Weather Error',
-          description: 'Failed to fetch weather data',
-          variant: 'destructive'
+          description: 'Weather data is not showing at this time.',
+          variant: 'destructive',
         });
-        setLoading(false);
-      }
-    };
-
-    const fetchDefaultWeather = async () => {
-      try {
-        // Default to New York coordinates as fallback
-        const { data, error } = await supabase.functions.invoke('weather', {
-          body: { lat: 40.7128, lon: -74.0060 }
-        });
-
-        if (error) {
-          console.error('Default weather API error:', error);
-          throw error;
-        }
-
-        if (data) {
-          setWeatherData(data);
-        }
-      } catch (error) {
-        console.error('Error fetching default weather:', error);
-        toast({
-          title: 'Weather Unavailable',
-          description: 'Unable to load weather data at this time',
-          variant: 'destructive'
-        });
-      } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     fetchWeatherData();
+    const interval = setInterval(fetchWeatherData, 15 * 60 * 1000); // refresh every 15 minutes
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [toast]);
 
   if (loading) {
