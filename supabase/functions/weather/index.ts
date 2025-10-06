@@ -19,74 +19,65 @@ serve(async (req) => {
       throw new Error('Latitude and longitude are required');
     }
 
-    const openWeatherApiKey = Deno.env.get('OPENWEATHER_API_KEY');
-    if (!openWeatherApiKey) {
-      throw new Error('OpenWeather API key not found');
+    const rapidApiKey = Deno.env.get('RAPIDAPI_KEY');
+    if (!rapidApiKey) {
+      throw new Error('RapidAPI key not found');
     }
 
-    // Get current weather
-    const currentWeatherResponse = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${openWeatherApiKey}&units=metric`
-    );
+    console.log('Fetching weather for coordinates:', { lat, lon });
 
-    if (!currentWeatherResponse.ok) {
-      throw new Error(`Weather API error: ${currentWeatherResponse.status}`);
-    }
-
-    const currentWeather = await currentWeatherResponse.json();
-
-    // Get 5-day forecast
-    const forecastResponse = await fetch(
-      `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${openWeatherApiKey}&units=metric`
-    );
-
-    if (!forecastResponse.ok) {
-      throw new Error(`Forecast API error: ${forecastResponse.status}`);
-    }
-
-    const forecast = await forecastResponse.json();
-
-    // Process forecast data - get daily forecasts
-    const dailyForecasts = [];
-    const today = new Date().toDateString();
-    
-    for (let i = 0; i < forecast.list.length; i += 8) { // Every 8th item (3-hour intervals, so 24/3 = 8)
-      if (dailyForecasts.length >= 4) break;
-      
-      const item = forecast.list[i];
-      const date = new Date(item.dt * 1000);
-      
-      if (date.toDateString() === today && dailyForecasts.length === 0) {
-        dailyForecasts.push({
-          day: 'Today',
-          temp: Math.round(item.main.temp),
-          condition: item.weather[0].main,
-          icon: item.weather[0].icon
-        });
-      } else if (date.toDateString() !== today) {
-        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        dailyForecasts.push({
-          day: dayNames[date.getDay()],
-          temp: Math.round(item.main.temp),
-          condition: item.weather[0].main,
-          icon: item.weather[0].icon
-        });
+    // Get current weather and forecast from WeatherAPI.com via RapidAPI
+    const weatherResponse = await fetch(
+      `https://weatherapi-com.p.rapidapi.com/forecast.json?q=${lat},${lon}&days=4`,
+      {
+        method: 'GET',
+        headers: {
+          'X-RapidAPI-Key': rapidApiKey,
+          'X-RapidAPI-Host': 'weatherapi-com.p.rapidapi.com'
+        }
       }
+    );
+
+    if (!weatherResponse.ok) {
+      const errorText = await weatherResponse.text();
+      console.error('Weather API error:', weatherResponse.status, errorText);
+      throw new Error(`Weather API error: ${weatherResponse.status}`);
     }
 
-    const weatherData = {
+    const weatherData = await weatherResponse.json();
+    console.log('Weather data received successfully');
+
+    // Process forecast data
+    const dailyForecasts = weatherData.forecast.forecastday.map((day: any, index: number) => {
+      const date = new Date(day.date);
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      
+      return {
+        day: index === 0 ? 'Today' : dayNames[date.getDay()],
+        temp: Math.round(day.day.avgtemp_c),
+        condition: day.day.condition.text,
+        icon: day.day.condition.icon
+      };
+    });
+
+    const response = {
       current: {
-        temp: Math.round(currentWeather.main.temp),
-        condition: currentWeather.weather[0].description,
-        humidity: currentWeather.main.humidity,
-        windSpeed: Math.round(currentWeather.wind.speed * 3.6), // Convert m/s to km/h
-        icon: currentWeather.weather[0].icon,
-        main: currentWeather.weather[0].main
+        temp: Math.round(weatherData.current.temp_c),
+        condition: weatherData.current.condition.text,
+        humidity: weatherData.current.humidity,
+        windSpeed: Math.round(weatherData.current.wind_kph),
+        icon: weatherData.current.condition.icon,
+        main: weatherData.current.condition.text
       },
-      forecast: dailyForecasts
+      forecast: dailyForecasts,
+      location: {
+        name: weatherData.location.name,
+        region: weatherData.location.region,
+        country: weatherData.location.country
+      }
     };
 
-    return new Response(JSON.stringify(weatherData), {
+    return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {

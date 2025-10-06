@@ -28,20 +28,20 @@ export const WeatherCard: React.FC = () => {
 
   // Get weather icon component based on condition
   const getWeatherIcon = (condition: string) => {
-    switch (condition?.toLowerCase()) {
-      case 'clear':
-        return Sun;
-      case 'clouds':
-        return Cloud;
-      case 'rain':
-        return CloudRain;
-      case 'drizzle':
-        return CloudDrizzle;
-      case 'snow':
-        return CloudSnow;
-      default:
-        return Cloud;
+    const lowerCondition = condition?.toLowerCase() || '';
+    
+    if (lowerCondition.includes('clear') || lowerCondition.includes('sunny')) {
+      return Sun;
+    } else if (lowerCondition.includes('rain')) {
+      return CloudRain;
+    } else if (lowerCondition.includes('drizzle')) {
+      return CloudDrizzle;
+    } else if (lowerCondition.includes('snow')) {
+      return CloudSnow;
+    } else if (lowerCondition.includes('cloud') || lowerCondition.includes('overcast')) {
+      return Cloud;
     }
+    return Cloud;
   };
 
   useEffect(() => {
