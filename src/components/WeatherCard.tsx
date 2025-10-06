@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Sun, Droplets, Wind, CloudSnow, CloudDrizzle } from 'lucide-react';
+import { Cloud, CloudRain, Sun, Droplets, Wind, CloudSnow, CloudDrizzle, MapPin } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 interface WeatherData {
   current: {
@@ -24,7 +25,9 @@ interface WeatherData {
 export const WeatherCard: React.FC = () => {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [locationName, setLocationName] = useState<string>('');
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Get weather icon component based on condition
   const getWeatherIcon = (condition: string) => {
@@ -47,23 +50,30 @@ export const WeatherCard: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
 
-    const fetchDefaultWeather = async () => {
+    const fetchWeatherForLocation = async (lat: number, lon: number, locationText?: string) => {
       try {
         const { data, error } = await supabase.functions.invoke('weather', {
-          body: { lat: 40.7128, lon: -74.0060 },
+          body: { lat, lon },
         });
 
         if (error) {
-          console.error('Default weather API error:', error);
+          console.error('Weather API error:', error);
           throw error;
         }
 
-        if (!cancelled && data) setWeatherData(data);
+        if (!cancelled && data) {
+          setWeatherData(data);
+          if (data.location) {
+            setLocationName(`${data.location.name}, ${data.location.country}`);
+          } else if (locationText) {
+            setLocationName(locationText);
+          }
+        }
       } catch (error) {
-        console.error('Error fetching default weather:', error);
+        console.error('Error fetching weather:', error);
         toast({
           title: 'Weather Unavailable',
-          description: 'Weather data is not showing at this time.',
+          description: 'Unable to fetch weather data. Please try again later.',
           variant: 'destructive',
         });
       } finally {
@@ -74,44 +84,81 @@ export const WeatherCard: React.FC = () => {
     const fetchWeatherData = async () => {
       try {
         setLoading(true);
+
+        // First, try to get user's stored location from database
+        if (user) {
+          const { data: userLocation, error: locationError } = await supabase
+            .from('user_locations')
+            .select('latitude, longitude, city, region, country')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (!locationError && userLocation && userLocation.latitude && userLocation.longitude) {
+            console.log('Using stored user location:', userLocation);
+            const locationText = [userLocation.city, userLocation.region, userLocation.country]
+              .filter(Boolean)
+              .join(', ');
+            await fetchWeatherForLocation(
+              Number(userLocation.latitude), 
+              Number(userLocation.longitude),
+              locationText
+            );
+            return;
+          }
+        }
+
+        // If no stored location, try browser geolocation
         if ('geolocation' in navigator) {
           navigator.geolocation.getCurrentPosition(
             async (position) => {
               const { latitude, longitude } = position.coords;
-              try {
-                const { data, error } = await supabase.functions.invoke('weather', {
-                  body: { lat: latitude, lon: longitude },
-                });
-
-                if (error) {
-                  console.error('Weather API error:', error);
-                  throw error;
+              console.log('Using browser geolocation:', { latitude, longitude });
+              
+              // Save location for logged-in users
+              if (user) {
+                try {
+                  const response = await fetch(
+                    `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+                  );
+                  const geoData = await response.json();
+                  
+                  await supabase.from('user_locations').insert({
+                    user_id: user.id,
+                    latitude,
+                    longitude,
+                    city: geoData.city || '',
+                    region: geoData.principalSubdivision || '',
+                    country: geoData.countryName || ''
+                  });
+                } catch (err) {
+                  console.error('Error saving location:', err);
                 }
-
-                if (!cancelled) setWeatherData(data);
-              } catch (err) {
-                console.error('Error calling weather function:', err);
-                await fetchDefaultWeather();
-              } finally {
-                if (!cancelled) setLoading(false);
               }
+
+              await fetchWeatherForLocation(latitude, longitude);
             },
             async (geoErr) => {
-              console.error('Geolocation error:', geoErr);
-              await fetchDefaultWeather();
+              console.error('Geolocation error:', geoErr.message);
+              toast({
+                title: 'Location Access Denied',
+                description: 'Please enable location access for accurate weather data.',
+                variant: 'default',
+              });
+              // Use default location as fallback
+              setLocationName('New York, USA');
+              await fetchWeatherForLocation(40.7128, -74.0060, 'New York, USA');
             },
-            { timeout: 10000, enableHighAccuracy: false }
+            { timeout: 10000, enableHighAccuracy: true, maximumAge: 300000 }
           );
         } else {
-          await fetchDefaultWeather();
+          // Geolocation not available
+          setLocationName('New York, USA');
+          await fetchWeatherForLocation(40.7128, -74.0060, 'New York, USA');
         }
       } catch (error) {
         console.error('Error in fetchWeatherData:', error);
-        toast({
-          title: 'Weather Error',
-          description: 'Weather data is not showing at this time.',
-          variant: 'destructive',
-        });
         if (!cancelled) setLoading(false);
       }
     };
@@ -123,7 +170,7 @@ export const WeatherCard: React.FC = () => {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [toast]);
+  }, [user, toast]);
 
   if (loading) {
     return (
@@ -155,7 +202,12 @@ export const WeatherCard: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold">Weather Forecast</h3>
-            <p className="text-sm opacity-90">Current conditions</p>
+            {locationName && (
+              <div className="flex items-center gap-1 text-sm opacity-90">
+                <MapPin className="w-3 h-3" />
+                <span>{locationName}</span>
+              </div>
+            )}
           </div>
           <CurrentIcon className="w-8 h-8" />
         </div>

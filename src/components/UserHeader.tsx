@@ -32,9 +32,41 @@ export const UserHeader: React.FC = () => {
     }
   };
 
+  const getUserLocation = async () => {
+    if (!user) return 'Punjabi Village, Punjab, India';
+    
+    try {
+      const { data: userLocation } = await supabase
+        .from('user_locations')
+        .select('city, region, country')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (userLocation) {
+        return [userLocation.city, userLocation.region, userLocation.country]
+          .filter(Boolean)
+          .join(', ') || 'Location not set';
+      }
+    } catch (error) {
+      console.error('Error fetching location:', error);
+    }
+    
+    return profile?.location || 'Location not set';
+  };
+
+  const [location, setLocation] = useState<string>('');
+
+  useEffect(() => {
+    if (user) {
+      getUserLocation().then(setLocation);
+    }
+  }, [user, profile]);
+
   const userName = user ? (profile?.farmer_name || user.email?.split('@')[0] || 'User') : 'Guest User';
   const phoneNumber = user ? (profile?.phone || 'No phone') : '+91 98765 43210';
-  const location = user ? (profile?.location || 'Location not set') : 'Punjabi Village, Punjab, India';
+  const displayLocation = user ? (location || 'Location not set') : 'Punjabi Village, Punjab, India';
 
   return (
     <div className="bg-gradient-nature text-white p-4 rounded-b-3xl shadow-medium">
@@ -60,7 +92,7 @@ export const UserHeader: React.FC = () => {
       
       <div className="flex items-center gap-1 mt-3 text-sm opacity-90">
         <MapPin className="w-4 h-4" />
-        <span>{location}</span>
+        <span>{displayLocation}</span>
       </div>
     </div>
   );
