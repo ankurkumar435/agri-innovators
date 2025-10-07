@@ -2,6 +2,7 @@ import React from 'react';
 import { Lightbulb, Bug, Mountain, Cpu, Store, BarChart3, User, Scan, Bot } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { ChatBot } from '@/components/ChatBot';
+import { CropScanner } from '@/components/CropScanner';
 
 interface ContentSectionProps {
   activeTab: string;
@@ -57,43 +58,7 @@ export const ContentSection: React.FC<ContentSectionProps> = ({ activeTab }) => 
         );
 
       case 'scan':
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 mb-4">
-              <Scan className="w-6 h-6 text-primary" />
-              <h2 className="text-xl font-bold text-foreground">Crop Scanner</h2>
-            </div>
-            
-            <Card className="p-6 text-center bg-gradient-nature border-0 text-white">
-              <Scan className="w-16 h-16 mx-auto mb-4 opacity-80" />
-              <h3 className="font-semibold text-lg mb-2">Scan Your Crop</h3>
-              <p className="text-sm opacity-90 mb-4">Point your camera at crops to get instant AI-powered analysis</p>
-              <button className="bg-white text-nature-primary px-6 py-2 rounded-full font-semibold">
-                Start Scanning
-              </button>
-            </Card>
-
-            <Card className="p-4">
-              <h3 className="font-semibold mb-3 text-foreground">Recent Scans</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-sm">Tomato Plant</p>
-                    <p className="text-xs text-muted-foreground">2 hours ago</p>
-                  </div>
-                  <span className="text-xs bg-success/10 text-success px-2 py-1 rounded">Healthy</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-sm">Rice Field</p>
-                    <p className="text-xs text-muted-foreground">1 day ago</p>
-                  </div>
-                  <span className="text-xs bg-warning/10 text-warning px-2 py-1 rounded">Monitor</span>
-                </div>
-              </div>
-            </Card>
-          </div>
-        );
+        return <CropScanner />;
 
       case 'ai-bot':
         return <ChatBot />;
