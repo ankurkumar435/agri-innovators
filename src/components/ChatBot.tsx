@@ -57,8 +57,34 @@ export const ChatBot: React.FC = () => {
     setIsLoading(true);
 
     try {
+      // Get user location if available
+      let userLat = null;
+      let userLon = null;
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        const { data: locationData } = await supabase
+          .from('user_locations')
+          .select('latitude, longitude')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (locationData) {
+          userLat = locationData.latitude;
+          userLon = locationData.longitude;
+        }
+      }
+
       const { data, error } = await supabase.functions.invoke('ai-chat', {
-        body: { message: content.trim() }
+        body: { 
+          message: content.trim(),
+          userId: user?.id,
+          userLat,
+          userLon
+        }
       });
 
       if (error) {
