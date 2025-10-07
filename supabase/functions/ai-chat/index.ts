@@ -30,9 +30,8 @@ serve(async (req) => {
 
     const huggingFaceApiKey = Deno.env.get('HUGGINGFACE_API_KEY');
     if (!huggingFaceApiKey) {
-      throw new Error('Hugging Face API key not found');
+      console.warn('HUGGINGFACE_API_KEY not found, will fall back to Lovable AI gateway if needed');
     }
-
     // Check if message is asking about weather
     const weatherKeywords = ['weather', 'temperature', 'rain', 'climate', 'forecast', 'sunny', 'cloudy', 
                              'मौसम', 'तापमान', 'बारिश', 'जलवायु', 'धूप', 'बादल',
@@ -68,17 +67,14 @@ serve(async (req) => {
 
         // Fetch weather if we have coordinates
         if (lat && lon) {
-          const weatherResponse = await fetch(`${supabaseUrl}/functions/v1/weather`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabaseKey}`,
-            },
-            body: JSON.stringify({ lat, lon }),
+          const { data: weatherInvokeData, error: weatherInvokeError } = await supabase.functions.invoke('weather', {
+            body: { lat, lon }
           });
 
-          if (weatherResponse.ok) {
-            weatherData = await weatherResponse.json();
+          if (weatherInvokeError) {
+            console.error('Error invoking weather function:', weatherInvokeError);
+          } else {
+            weatherData = weatherInvokeData;
             console.log('Weather data fetched successfully');
           }
         }
@@ -87,7 +83,7 @@ serve(async (req) => {
       }
     }
 
-    const hf = new HfInference(huggingFaceApiKey);
+    const hf = huggingFaceApiKey ? new HfInference(huggingFaceApiKey) : null;
 
     const systemPrompt = `You are FarmBot AI, a helpful farming assistant specialized in agriculture, crop management, weather patterns, pest control, soil health, market trends, and sustainable farming practices. 
 
@@ -109,19 +105,58 @@ Always be encouraging and supportive to farmers, understanding their challenges 
 
     const fullPrompt = `${systemPrompt}\n\nUser: ${message}\nAssistant:`;
 
-    console.log('Calling Hugging Face API...');
-    const response = await hf.textGeneration({
-      model: 'zai-org/GLM-4.6',
-      inputs: fullPrompt,
-      parameters: {
-        max_new_tokens: 1000,
-        temperature: 0.7,
-        return_full_text: false,
-      },
-    });
+    let reply = '';
+    try {
+      if (!hf) throw new Error('Hugging Face not configured');
+      console.log('Calling Hugging Face API with GLM-4.6...');
+      const hfResp = await hf.textGeneration({
+        model: 'zai-org/GLM-4.6',
+        inputs: fullPrompt,
+        parameters: {
+          max_new_tokens: 1000,
+          temperature: 0.7,
+          return_full_text: false,
+        },
+      });
+      reply = hfResp.generated_text;
+      console.log('AI response generated via Hugging Face');
+    } catch (hfError) {
+      console.error('Hugging Face failed, falling back to Lovable AI:', hfError);
+      const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+      if (!LOVABLE_API_KEY) {
+        throw new Error('AI configuration error: LOVABLE_API_KEY missing and Hugging Face failed');
+      }
+      const gatewayResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: message }
+          ],
+          stream: false,
+        }),
+      });
 
-    const reply = response.generated_text;
-    console.log('AI response generated successfully');
+      if (!gatewayResp.ok) {
+        const t = await gatewayResp.text();
+        console.error('Lovable AI gateway error:', gatewayResp.status, t);
+        if (gatewayResp.status === 429) {
+          throw new Error('Rate limits exceeded, please try again later.');
+        }
+        if (gatewayResp.status === 402) {
+          throw new Error('Payment required, please add funds to your Lovable AI workspace.');
+        }
+        throw new Error('AI gateway error');
+      }
+      const gatewayJson = await gatewayResp.json();
+      reply = gatewayJson.choices?.[0]?.message?.content ?? '';
+      console.log('AI response generated via Lovable AI');
+    }
 
     return new Response(JSON.stringify({ reply }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
