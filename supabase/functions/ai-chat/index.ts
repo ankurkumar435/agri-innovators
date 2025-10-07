@@ -111,7 +111,7 @@ Always be encouraging and supportive to farmers, understanding their challenges 
 
     console.log('Calling Hugging Face API...');
     const response = await hf.textGeneration({
-      model: 'meta-llama/Llama-2-7b-chat-hf',
+      model: 'zai-org/GLM-4.6',
       inputs: fullPrompt,
       parameters: {
         max_new_tokens: 1000,
