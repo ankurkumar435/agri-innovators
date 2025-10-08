@@ -57,7 +57,7 @@ export const CropScanner: React.FC = () => {
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.drawImage(video, 0, 0);
-        const imageData = canvas.toDataURL('image/jpeg');
+        const imageData = canvas.toDataURL('image/jpeg', 0.8);
         setImagePreview(imageData);
         stopCamera();
         toast.success('Image captured');
@@ -72,10 +72,38 @@ export const CropScanner: React.FC = () => {
         toast.error('Please upload an image file');
         return;
       }
+      
       const reader = new FileReader();
       reader.onload = (event) => {
-        setImagePreview(event.target?.result as string);
-        toast.success('Image uploaded');
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          // Resize if image is too large
+          const maxSize = 1024;
+          if (width > maxSize || height > maxSize) {
+            if (width > height) {
+              height = (height * maxSize) / width;
+              width = maxSize;
+            } else {
+              width = (width * maxSize) / height;
+              height = maxSize;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressedImage = canvas.toDataURL('image/jpeg', 0.8);
+            setImagePreview(compressedImage);
+            toast.success('Image uploaded');
+          }
+        };
+        img.src = event.target?.result as string;
       };
       reader.readAsDataURL(file);
     }
@@ -122,12 +150,13 @@ export const CropScanner: React.FC = () => {
             <X className="w-5 h-5" />
           </Button>
         </div>
-        <div className="relative rounded-lg overflow-hidden bg-black">
+        <div className="relative rounded-lg overflow-hidden bg-black aspect-video">
           <video 
             ref={videoRef} 
             autoPlay 
             playsInline
-            className="w-full h-auto"
+            muted
+            className="w-full h-full object-cover"
           />
           <canvas ref={canvasRef} className="hidden" />
         </div>
