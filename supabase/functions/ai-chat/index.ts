@@ -108,13 +108,14 @@ Always be encouraging and supportive to farmers, understanding their challenges 
     let reply = '';
     try {
       if (!hf) throw new Error('Hugging Face not configured');
-      console.log('Calling Hugging Face API with GLM-4.6...');
+      console.log('Calling Hugging Face API with Qwen2.5-7B-Instruct...');
       const hfResp = await hf.textGeneration({
-        model: 'zai-org/GLM-4.6',
+        model: 'Qwen/Qwen2.5-7B-Instruct',
         inputs: fullPrompt,
         parameters: {
           max_new_tokens: 1000,
           temperature: 0.7,
+          top_p: 0.9,
           return_full_text: false,
         },
       });
