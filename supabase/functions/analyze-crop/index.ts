@@ -27,18 +27,26 @@ serve(async (req) => {
 
     console.log('Analyzing crop image with Lovable AI...');
 
-    const systemPrompt = `You are an expert plant pathologist and agricultural AI assistant. Analyze crop images to detect diseases, pests, or health issues.
+    const systemPrompt = `You are an expert plant pathologist, botanist, and agricultural AI assistant. Analyze crop images to:
+1. FIRST identify the plant/crop species
+2. Then detect any diseases, pests, or health issues
 
 Your response must be a valid JSON object with the following structure:
 {
+  "plantNameEnglish": "Common name of the plant in English (e.g., Rice, Wheat, Tomato, Mango)",
+  "plantNameHindi": "Name of the plant in Hindi (e.g., धान, गेहूं, टमाटर, आम)",
+  "scientificName": "Scientific/botanical name (e.g., Oryza sativa)",
   "disease": "Name of the disease or 'Healthy Crop' if no issues detected",
+  "diseaseHindi": "Disease name in Hindi (e.g., पत्ती अंगमारी, स्वस्थ फसल)",
   "confidence": "High/Medium/Low",
   "severity": "Healthy/Mild/Moderate/Severe",
-  "treatment": "Detailed treatment recommendations",
-  "prevention": "Prevention measures for future"
+  "treatment": "Detailed treatment recommendations in English",
+  "treatmentHindi": "Treatment recommendations in Hindi",
+  "prevention": "Prevention measures for future in English",
+  "preventionHindi": "Prevention measures in Hindi"
 }
 
-Be specific and actionable in your recommendations. If the image is not clear or not a crop, state that clearly.`;
+Be specific and accurate in identifying the plant species. If you cannot identify the plant clearly, provide your best guess with lower confidence. If the image is not of a plant or crop, state that clearly.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -55,7 +63,7 @@ Be specific and actionable in your recommendations. If the image is not clear or
             content: [
               {
                 type: 'text',
-                text: 'Analyze this crop image and provide a disease diagnosis with treatment recommendations in JSON format.'
+                text: 'Analyze this image. First identify the plant/crop species with names in both English and Hindi, then diagnose any diseases and provide treatment recommendations. Return response in JSON format.'
               },
               {
                 type: 'image_url',
@@ -105,25 +113,37 @@ Be specific and actionable in your recommendations. If the image is not clear or
       } else {
         // Fallback if AI doesn't return proper JSON
         analysis = {
+          plantNameEnglish: "Unknown Plant",
+          plantNameHindi: "अज्ञात पौधा",
+          scientificName: "N/A",
           disease: "Analysis Unavailable",
+          diseaseHindi: "विश्लेषण अनुपलब्ध",
           confidence: "Low",
           severity: "Unknown",
           treatment: aiResponse || "Unable to analyze the image. Please ensure it's a clear photo of a crop.",
-          prevention: "Take clear, well-lit photos of affected plant parts for better analysis."
+          treatmentHindi: "छवि का विश्लेषण करने में असमर्थ। कृपया सुनिश्चित करें कि यह फसल की एक स्पष्ट तस्वीर है।",
+          prevention: "Take clear, well-lit photos of affected plant parts for better analysis.",
+          preventionHindi: "बेहतर विश्लेषण के लिए प्रभावित पौधे के हिस्सों की स्पष्ट, अच्छी रोशनी वाली तस्वीरें लें।"
         };
       }
     } catch (parseError) {
       console.error('JSON parse error:', parseError);
       analysis = {
+        plantNameEnglish: "Unknown Plant",
+        plantNameHindi: "अज्ञात पौधा",
+        scientificName: "N/A",
         disease: "Analysis Error",
+        diseaseHindi: "विश्लेषण त्रुटि",
         confidence: "Low",
         severity: "Unknown",
         treatment: "The analysis could not be completed. Please try again with a clearer image.",
-        prevention: "Ensure good lighting and focus on the affected area."
+        treatmentHindi: "विश्लेषण पूरा नहीं हो सका। कृपया एक स्पष्ट छवि के साथ पुनः प्रयास करें।",
+        prevention: "Ensure good lighting and focus on the affected area.",
+        preventionHindi: "अच्छी रोशनी सुनिश्चित करें और प्रभावित क्षेत्र पर ध्यान दें।"
       };
     }
 
-    console.log('Analysis complete');
+    console.log('Analysis complete:', analysis);
 
     return new Response(
       JSON.stringify({ analysis }),

@@ -1,16 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Upload, X, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Camera, Upload, X, Loader2, AlertCircle, CheckCircle, Leaf } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DiseaseResult {
+  plantNameEnglish: string;
+  plantNameHindi: string;
+  scientificName: string;
   disease: string;
+  diseaseHindi: string;
   confidence: string;
   severity: string;
   treatment: string;
+  treatmentHindi: string;
   prevention: string;
+  preventionHindi: string;
 }
 
 export const CropScanner: React.FC = () => {
@@ -30,7 +36,6 @@ export const CropScanner: React.FC = () => {
     setIsCameraReady(false);
     
     try {
-      // Check if getUserMedia is supported
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Camera not supported on this device/browser');
       }
@@ -46,7 +51,6 @@ export const CropScanner: React.FC = () => {
       streamRef.current = stream;
       setShowCamera(true);
       
-      // Wait for next tick to ensure video element is mounted
       setTimeout(() => {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -97,7 +101,6 @@ export const CropScanner: React.FC = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     
-    // Ensure video has valid dimensions
     if (video.videoWidth === 0 || video.videoHeight === 0) {
       toast.error('Camera not fully loaded. Please wait.');
       return;
@@ -132,7 +135,6 @@ export const CropScanner: React.FC = () => {
           let width = img.width;
           let height = img.height;
           
-          // Resize if image is too large
           const maxSize = 1024;
           if (width > maxSize || height > maxSize) {
             if (width > height) {
@@ -194,7 +196,6 @@ export const CropScanner: React.FC = () => {
     }
   };
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (streamRef.current) {
@@ -266,7 +267,7 @@ export const CropScanner: React.FC = () => {
               <Camera className="w-16 h-16 mx-auto mb-4 opacity-80" />
               <h3 className="font-semibold text-lg mb-2">Scan Your Crop</h3>
               <p className="text-sm opacity-90 mb-6">
-                Detect crop diseases instantly with AI-powered analysis
+                Identify plants and detect crop diseases with AI
               </p>
               <div className="flex flex-col gap-3">
                 <Button 
@@ -295,8 +296,8 @@ export const CropScanner: React.FC = () => {
             <h3 className="font-semibold mb-3 text-foreground">How it works</h3>
             <div className="space-y-2 text-sm text-muted-foreground">
               <p>1. Take a photo or upload an image of your crop</p>
-              <p>2. Our AI will analyze the image for diseases</p>
-              <p>3. Get instant diagnosis and treatment recommendations</p>
+              <p>2. AI identifies the plant and checks for diseases</p>
+              <p>3. Get plant name in English & Hindi with diagnosis</p>
             </div>
           </Card>
         </>
@@ -335,48 +336,90 @@ export const CropScanner: React.FC = () => {
           </Card>
 
           {result && (
-            <Card className="p-4 space-y-4">
-              <div className="flex items-start gap-3">
-                {result.severity === 'Healthy' ? (
-                  <CheckCircle className="w-6 h-6 text-success flex-shrink-0 mt-1" />
-                ) : (
-                  <AlertCircle className="w-6 h-6 text-warning flex-shrink-0 mt-1" />
-                )}
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg mb-1">{result.disease}</h3>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Confidence: {result.confidence}
-                  </p>
-                  <div className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                    result.severity === 'Healthy' 
-                      ? 'bg-success/10 text-success' 
-                      : result.severity === 'Mild' 
-                      ? 'bg-warning/10 text-warning'
-                      : 'bg-destructive/10 text-destructive'
-                  }`}>
-                    {result.severity}
+            <div className="space-y-4">
+              {/* Plant Identification Card */}
+              <Card className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-full bg-primary/20">
+                    <Leaf className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg text-foreground">Plant Identified</h3>
+                    <p className="text-xs text-muted-foreground mb-2">पौधे की पहचान</p>
+                    
+                    <div className="grid grid-cols-2 gap-4 mt-3">
+                      <div>
+                        <p className="text-xs text-muted-foreground">English</p>
+                        <p className="font-semibold text-foreground">{result.plantNameEnglish || 'Unknown'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">हिंदी</p>
+                        <p className="font-semibold text-foreground">{result.plantNameHindi || 'अज्ञात'}</p>
+                      </div>
+                    </div>
+                    
+                    {result.scientificName && result.scientificName !== 'N/A' && (
+                      <p className="text-xs text-muted-foreground mt-2 italic">
+                        Scientific: {result.scientificName}
+                      </p>
+                    )}
                   </div>
                 </div>
-              </div>
+              </Card>
 
-              <div>
-                <h4 className="font-semibold mb-2 text-foreground">Treatment</h4>
-                <p className="text-sm text-muted-foreground">{result.treatment}</p>
-              </div>
+              {/* Disease Analysis Card */}
+              <Card className="p-4 space-y-4">
+                <div className="flex items-start gap-3">
+                  {result.severity === 'Healthy' ? (
+                    <CheckCircle className="w-6 h-6 text-success flex-shrink-0 mt-1" />
+                  ) : (
+                    <AlertCircle className="w-6 h-6 text-warning flex-shrink-0 mt-1" />
+                  )}
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg mb-1">{result.disease}</h3>
+                    {result.diseaseHindi && (
+                      <p className="text-sm text-muted-foreground mb-2">{result.diseaseHindi}</p>
+                    )}
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Confidence: {result.confidence}
+                    </p>
+                    <div className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                      result.severity === 'Healthy' 
+                        ? 'bg-success/10 text-success' 
+                        : result.severity === 'Mild' 
+                        ? 'bg-warning/10 text-warning'
+                        : 'bg-destructive/10 text-destructive'
+                    }`}>
+                      {result.severity}
+                    </div>
+                  </div>
+                </div>
 
-              <div>
-                <h4 className="font-semibold mb-2 text-foreground">Prevention</h4>
-                <p className="text-sm text-muted-foreground">{result.prevention}</p>
-              </div>
+                <div className="border-t pt-4">
+                  <h4 className="font-semibold mb-2 text-foreground">Treatment / उपचार</h4>
+                  <p className="text-sm text-muted-foreground mb-2">{result.treatment}</p>
+                  {result.treatmentHindi && (
+                    <p className="text-sm text-muted-foreground bg-muted/50 p-2 rounded">{result.treatmentHindi}</p>
+                  )}
+                </div>
 
-              <Button 
-                onClick={reset}
-                variant="outline"
-                className="w-full"
-              >
-                Scan Another Crop
-              </Button>
-            </Card>
+                <div className="border-t pt-4">
+                  <h4 className="font-semibold mb-2 text-foreground">Prevention / रोकथाम</h4>
+                  <p className="text-sm text-muted-foreground mb-2">{result.prevention}</p>
+                  {result.preventionHindi && (
+                    <p className="text-sm text-muted-foreground bg-muted/50 p-2 rounded">{result.preventionHindi}</p>
+                  )}
+                </div>
+
+                <Button 
+                  onClick={reset}
+                  variant="outline"
+                  className="w-full"
+                >
+                  Scan Another Crop
+                </Button>
+              </Card>
+            </div>
           )}
         </>
       )}
