@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Camera, Upload, X, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,26 +18,61 @@ export const CropScanner: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<DiseaseResult | null>(null);
   const [showCamera, setShowCamera] = useState(false);
+  const [isCameraReady, setIsCameraReady] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
   const startCamera = async () => {
+    setCameraError(null);
+    setIsCameraReady(false);
+    
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } 
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera not supported on this device/browser');
       }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        } 
+      });
+      
+      streamRef.current = stream;
       setShowCamera(true);
-      toast.success('Camera started');
-    } catch (error) {
+      
+      // Wait for next tick to ensure video element is mounted
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      }, 100);
+      
+    } catch (error: any) {
       console.error('Camera error:', error);
-      toast.error('Failed to access camera. Please check permissions.');
+      let errorMessage = 'Failed to access camera.';
+      
+      if (error.name === 'NotAllowedError') {
+        errorMessage = 'Camera permission denied. Please allow camera access.';
+      } else if (error.name === 'NotFoundError') {
+        errorMessage = 'No camera found on this device.';
+      } else if (error.name === 'NotSupportedError' || error.message?.includes('not supported')) {
+        errorMessage = 'Camera not supported. Try uploading an image instead.';
+      }
+      
+      setCameraError(errorMessage);
+      toast.error(errorMessage);
     }
+  };
+
+  const handleVideoLoaded = () => {
+    setIsCameraReady(true);
+    toast.success('Camera ready');
   };
 
   const stopCamera = () => {
@@ -45,23 +80,39 @@ export const CropScanner: React.FC = () => {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
     setShowCamera(false);
+    setIsCameraReady(false);
+    setCameraError(null);
   };
 
   const captureImage = () => {
-    if (videoRef.current && canvasRef.current) {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(video, 0, 0);
-        const imageData = canvas.toDataURL('image/jpeg', 0.8);
-        setImagePreview(imageData);
-        stopCamera();
-        toast.success('Image captured');
-      }
+    if (!videoRef.current || !canvasRef.current) {
+      toast.error('Camera not ready');
+      return;
+    }
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    
+    // Ensure video has valid dimensions
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      toast.error('Camera not fully loaded. Please wait.');
+      return;
+    }
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = canvas.toDataURL('image/jpeg', 0.85);
+      setImagePreview(imageData);
+      stopCamera();
+      toast.success('Image captured successfully!');
     }
   };
 
@@ -98,7 +149,7 @@ export const CropScanner: React.FC = () => {
           const ctx = canvas.getContext('2d');
           if (ctx) {
             ctx.drawImage(img, 0, 0, width, height);
-            const compressedImage = canvas.toDataURL('image/jpeg', 0.8);
+            const compressedImage = canvas.toDataURL('image/jpeg', 0.85);
             setImagePreview(compressedImage);
             toast.success('Image uploaded');
           }
@@ -116,12 +167,14 @@ export const CropScanner: React.FC = () => {
     setResult(null);
 
     try {
+      console.log('Sending image for analysis...');
       const { data, error } = await supabase.functions.invoke('analyze-crop', {
         body: { image: imagePreview }
       });
 
       if (error) throw error;
 
+      console.log('Analysis result:', data);
       setResult(data.analysis);
       toast.success('Analysis complete!');
     } catch (error) {
@@ -141,6 +194,15 @@ export const CropScanner: React.FC = () => {
     }
   };
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
   if (showCamera) {
     return (
       <div className="space-y-4">
@@ -156,18 +218,32 @@ export const CropScanner: React.FC = () => {
             autoPlay 
             playsInline
             muted
+            onLoadedMetadata={handleVideoLoaded}
             className="w-full h-full object-cover"
           />
           <canvas ref={canvasRef} className="hidden" />
+          
+          {!isCameraReady && !cameraError && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+              <Loader2 className="w-8 h-8 animate-spin text-white" />
+              <span className="ml-2 text-white">Starting camera...</span>
+            </div>
+          )}
         </div>
+        
         <Button 
           onClick={captureImage} 
           className="w-full"
           size="lg"
+          disabled={!isCameraReady}
         >
           <Camera className="w-5 h-5 mr-2" />
-          Capture Photo
+          {isCameraReady ? 'Capture Photo' : 'Waiting for camera...'}
         </Button>
+        
+        <p className="text-xs text-muted-foreground text-center">
+          Position your crop clearly in frame for best results
+        </p>
       </div>
     );
   }
@@ -178,6 +254,7 @@ export const CropScanner: React.FC = () => {
         ref={fileInputRef}
         type="file"
         accept="image/*"
+        capture="environment"
         onChange={handleFileUpload}
         className="hidden"
       />
