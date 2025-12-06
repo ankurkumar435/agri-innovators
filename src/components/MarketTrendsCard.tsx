@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, BarChart3, MapPin, RefreshCw, Loader2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, BarChart3, MapPin, RefreshCw, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+
+interface PriceHistory {
+  date: string;
+  price: number;
+}
 
 interface CropPrice {
   name: string;
@@ -15,6 +21,7 @@ interface CropPrice {
   trend: 'up' | 'down';
   unit: string;
   market: string;
+  history: PriceHistory[];
 }
 
 interface MarketData {
@@ -32,6 +39,7 @@ export const MarketTrendsCard: React.FC = () => {
   const [marketData, setMarketData] = useState<MarketData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [expandedCrop, setExpandedCrop] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -41,7 +49,6 @@ export const MarketTrendsCard: React.FC = () => {
         setRefreshing(true);
       }
 
-      // Get user's location from database
       let state = 'India';
       let city = 'Local Market';
 
@@ -60,7 +67,6 @@ export const MarketTrendsCard: React.FC = () => {
         }
       }
 
-      // Fetch market prices from edge function
       const { data, error } = await supabase.functions.invoke('market-prices', {
         body: { state, city },
       });
@@ -94,7 +100,6 @@ export const MarketTrendsCard: React.FC = () => {
   useEffect(() => {
     fetchMarketPrices();
     
-    // Refresh prices every 30 minutes
     const interval = setInterval(() => {
       fetchMarketPrices();
     }, 30 * 60 * 1000);
@@ -116,6 +121,15 @@ export const MarketTrendsCard: React.FC = () => {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const formatChartDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+  };
+
+  const toggleCropExpansion = (cropName: string) => {
+    setExpandedCrop(expandedCrop === cropName ? null : cropName);
   };
 
   if (loading) {
@@ -158,34 +172,92 @@ export const MarketTrendsCard: React.FC = () => {
         )}
 
         {/* Crop Prices */}
-        <div className="space-y-3 max-h-64 overflow-y-auto">
+        <div className="space-y-2 max-h-[400px] overflow-y-auto">
           {marketData?.crops.map((crop) => (
-            <div key={crop.name} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-              <div className="flex flex-col">
-                <div className="text-sm font-medium text-foreground">{crop.name}</div>
-                <div className="text-xs text-muted-foreground">{crop.nameHindi}</div>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <div className="text-sm font-semibold text-foreground">
-                    {formatPrice(crop.price)}
-                  </div>
-                  <div className="text-xs text-muted-foreground">per {crop.unit}</div>
+            <div key={crop.name} className="border border-border/50 rounded-lg overflow-hidden">
+              {/* Crop Row */}
+              <div 
+                className="flex items-center justify-between py-3 px-3 cursor-pointer hover:bg-accent/50 transition-colors"
+                onClick={() => toggleCropExpansion(crop.name)}
+              >
+                <div className="flex flex-col">
+                  <div className="text-sm font-medium text-foreground">{crop.name}</div>
+                  <div className="text-xs text-muted-foreground">{crop.nameHindi}</div>
                 </div>
                 
-                <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
-                  crop.trend === 'up' 
-                    ? 'bg-success/10 text-success' 
-                    : 'bg-destructive/10 text-destructive'
-                }`}>
-                  {crop.trend === 'up' ? 
-                    <TrendingUp className="w-3 h-3" /> : 
-                    <TrendingDown className="w-3 h-3" />
-                  }
-                  <span>{crop.change}%</span>
+                <div className="flex items-center gap-2">
+                  <div className="text-right">
+                    <div className="text-sm font-semibold text-foreground">
+                      {formatPrice(crop.price)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">per {crop.unit}</div>
+                  </div>
+                  
+                  <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+                    crop.trend === 'up' 
+                      ? 'bg-success/10 text-success' 
+                      : 'bg-destructive/10 text-destructive'
+                  }`}>
+                    {crop.trend === 'up' ? 
+                      <TrendingUp className="w-3 h-3" /> : 
+                      <TrendingDown className="w-3 h-3" />
+                    }
+                    <span>{crop.change}%</span>
+                  </div>
+
+                  {expandedCrop === crop.name ? (
+                    <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                  )}
                 </div>
               </div>
+
+              {/* Price History Chart */}
+              {expandedCrop === crop.name && crop.history && (
+                <div className="px-3 pb-3 pt-1 bg-accent/20">
+                  <div className="text-xs text-muted-foreground mb-2">7-Day Price History</div>
+                  <div className="h-32 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={crop.history}>
+                        <XAxis 
+                          dataKey="date" 
+                          tickFormatter={formatChartDate}
+                          tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                          axisLine={{ stroke: 'hsl(var(--border))' }}
+                          tickLine={false}
+                        />
+                        <YAxis 
+                          domain={['dataMin - 100', 'dataMax + 100']}
+                          tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                          axisLine={{ stroke: 'hsl(var(--border))' }}
+                          tickLine={false}
+                          tickFormatter={(value) => `₹${value}`}
+                          width={50}
+                        />
+                        <Tooltip
+                          formatter={(value: number) => [formatPrice(value), 'Price']}
+                          labelFormatter={(label) => formatChartDate(label)}
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                          }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="price" 
+                          stroke={crop.trend === 'up' ? 'hsl(var(--success))' : 'hsl(var(--destructive))'}
+                          strokeWidth={2}
+                          dot={{ fill: crop.trend === 'up' ? 'hsl(var(--success))' : 'hsl(var(--destructive))', strokeWidth: 0, r: 3 }}
+                          activeDot={{ r: 5, strokeWidth: 0 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -193,7 +265,7 @@ export const MarketTrendsCard: React.FC = () => {
         {/* Footer */}
         <div className="pt-3 border-t border-border">
           <p className="text-xs text-muted-foreground text-center">
-            Updated {marketData?.lastUpdated ? formatTime(marketData.lastUpdated) : 'recently'} • Prices in ₹/quintal
+            Updated {marketData?.lastUpdated ? formatTime(marketData.lastUpdated) : 'recently'} • Tap crop for 7-day chart
           </p>
         </div>
       </div>
