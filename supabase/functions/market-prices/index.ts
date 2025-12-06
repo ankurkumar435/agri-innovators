@@ -36,8 +36,31 @@ const stateBasePrices: Record<string, Record<string, number>> = {
   'default': { Rice: 2150, Wheat: 2275, Maize: 2000, Potato: 1250, Onion: 2400, Tomato: 3000, Soybean: 4450, Cotton: 6800 },
 };
 
+// Generate historical prices for the last 7 days
+function generateHistoricalPrices(basePrice: number, cropName: string): { date: string; price: number }[] {
+  const history = [];
+  const today = new Date();
+  
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    
+    const dayOfMonth = date.getDate();
+    const seed = (cropName.charCodeAt(0) + dayOfMonth) % 100;
+    const variationPercent = ((seed - 50) / 50) * 10; // -10% to +10% variation
+    
+    const price = Math.round(basePrice * (1 + variationPercent / 100));
+    history.push({
+      date: date.toISOString().split('T')[0],
+      price,
+    });
+  }
+  
+  return history;
+}
+
 // Simulate price changes based on date (for realistic variation)
-function getRealisticPriceVariation(basePrice: number, cropName: string): { price: number; change: number; trend: 'up' | 'down' } {
+function getRealisticPriceVariation(basePrice: number, cropName: string): { price: number; change: number; trend: 'up' | 'down'; history: { date: string; price: number }[] } {
   const today = new Date();
   const dayOfWeek = today.getDay();
   const dayOfMonth = today.getDate();
@@ -49,8 +72,9 @@ function getRealisticPriceVariation(basePrice: number, cropName: string): { pric
   const price = Math.round(basePrice * (1 + variationPercent / 100));
   const change = parseFloat(variationPercent.toFixed(1));
   const trend = change >= 0 ? 'up' : 'down';
+  const history = generateHistoricalPrices(basePrice, cropName);
   
-  return { price, change: Math.abs(change), trend };
+  return { price, change: Math.abs(change), trend, history };
 }
 
 serve(async (req) => {
@@ -70,7 +94,7 @@ serve(async (req) => {
     // Generate realistic market data
     const marketData = majorCrops.map(crop => {
       const basePrice = basePrices[crop.name] || 2000;
-      const { price, change, trend } = getRealisticPriceVariation(basePrice, crop.name);
+      const { price, change, trend, history } = getRealisticPriceVariation(basePrice, crop.name);
       
       return {
         name: crop.name,
@@ -79,8 +103,9 @@ serve(async (req) => {
         price: price,
         change: change,
         trend: trend,
-        unit: crop.category === 'vegetables' ? 'qt' : 'qt', // quintal
+        unit: 'qt', // quintal
         market: city || state || 'Local Mandi',
+        history: history,
       };
     });
 
