@@ -6,34 +6,125 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Major crops traded in Indian mandis
+// Comprehensive list of crops traded in Indian mandis
 const majorCrops = [
+  // Cereals
   { name: 'Rice', nameHindi: 'चावल', category: 'cereals' },
   { name: 'Wheat', nameHindi: 'गेहूं', category: 'cereals' },
   { name: 'Maize', nameHindi: 'मक्का', category: 'cereals' },
+  { name: 'Bajra', nameHindi: 'बाजरा', category: 'cereals' },
+  { name: 'Jowar', nameHindi: 'ज्वार', category: 'cereals' },
+  { name: 'Barley', nameHindi: 'जौ', category: 'cereals' },
+  { name: 'Ragi', nameHindi: 'रागी', category: 'cereals' },
+  
+  // Pulses
+  { name: 'Chana', nameHindi: 'चना', category: 'pulses' },
+  { name: 'Arhar/Tur Dal', nameHindi: 'अरहर/तूर दाल', category: 'pulses' },
+  { name: 'Moong', nameHindi: 'मूंग', category: 'pulses' },
+  { name: 'Urad', nameHindi: 'उड़द', category: 'pulses' },
+  { name: 'Masoor', nameHindi: 'मसूर', category: 'pulses' },
+  { name: 'Rajma', nameHindi: 'राजमा', category: 'pulses' },
+  { name: 'Lobia', nameHindi: 'लोबिया', category: 'pulses' },
+  
+  // Vegetables
   { name: 'Potato', nameHindi: 'आलू', category: 'vegetables' },
   { name: 'Onion', nameHindi: 'प्याज', category: 'vegetables' },
   { name: 'Tomato', nameHindi: 'टमाटर', category: 'vegetables' },
+  { name: 'Cauliflower', nameHindi: 'फूलगोभी', category: 'vegetables' },
+  { name: 'Cabbage', nameHindi: 'पत्तागोभी', category: 'vegetables' },
+  { name: 'Brinjal', nameHindi: 'बैंगन', category: 'vegetables' },
+  { name: 'Lady Finger', nameHindi: 'भिंडी', category: 'vegetables' },
+  { name: 'Green Peas', nameHindi: 'हरी मटर', category: 'vegetables' },
+  { name: 'Carrot', nameHindi: 'गाजर', category: 'vegetables' },
+  { name: 'Radish', nameHindi: 'मूली', category: 'vegetables' },
+  { name: 'Spinach', nameHindi: 'पालक', category: 'vegetables' },
+  { name: 'Bitter Gourd', nameHindi: 'करेला', category: 'vegetables' },
+  { name: 'Bottle Gourd', nameHindi: 'लौकी', category: 'vegetables' },
+  { name: 'Cucumber', nameHindi: 'खीरा', category: 'vegetables' },
+  { name: 'Capsicum', nameHindi: 'शिमला मिर्च', category: 'vegetables' },
+  { name: 'Green Chilli', nameHindi: 'हरी मिर्च', category: 'vegetables' },
+  { name: 'Ginger', nameHindi: 'अदरक', category: 'vegetables' },
+  { name: 'Garlic', nameHindi: 'लहसुन', category: 'vegetables' },
+  { name: 'Coriander', nameHindi: 'धनिया', category: 'vegetables' },
+  { name: 'Fenugreek', nameHindi: 'मेथी', category: 'vegetables' },
+  { name: 'Drumstick', nameHindi: 'सहजन', category: 'vegetables' },
+  { name: 'Pumpkin', nameHindi: 'कद्दू', category: 'vegetables' },
+  
+  // Fruits
+  { name: 'Mango', nameHindi: 'आम', category: 'fruits' },
+  { name: 'Banana', nameHindi: 'केला', category: 'fruits' },
+  { name: 'Apple', nameHindi: 'सेब', category: 'fruits' },
+  { name: 'Grapes', nameHindi: 'अंगूर', category: 'fruits' },
+  { name: 'Papaya', nameHindi: 'पपीता', category: 'fruits' },
+  { name: 'Guava', nameHindi: 'अमरूद', category: 'fruits' },
+  { name: 'Watermelon', nameHindi: 'तरबूज', category: 'fruits' },
+  { name: 'Pomegranate', nameHindi: 'अनार', category: 'fruits' },
+  { name: 'Orange', nameHindi: 'संतरा', category: 'fruits' },
+  { name: 'Lemon', nameHindi: 'नींबू', category: 'fruits' },
+  
+  // Oilseeds
   { name: 'Soybean', nameHindi: 'सोयाबीन', category: 'oilseeds' },
+  { name: 'Groundnut', nameHindi: 'मूंगफली', category: 'oilseeds' },
+  { name: 'Mustard', nameHindi: 'सरसों', category: 'oilseeds' },
+  { name: 'Sunflower', nameHindi: 'सूरजमुखी', category: 'oilseeds' },
+  { name: 'Sesame', nameHindi: 'तिल', category: 'oilseeds' },
+  { name: 'Castor', nameHindi: 'अरंडी', category: 'oilseeds' },
+  { name: 'Coconut', nameHindi: 'नारियल', category: 'oilseeds' },
+  
+  // Spices
+  { name: 'Turmeric', nameHindi: 'हल्दी', category: 'spices' },
+  { name: 'Red Chilli', nameHindi: 'लाल मिर्च', category: 'spices' },
+  { name: 'Cumin', nameHindi: 'जीरा', category: 'spices' },
+  { name: 'Coriander Seeds', nameHindi: 'धनिया बीज', category: 'spices' },
+  { name: 'Cardamom', nameHindi: 'इलायची', category: 'spices' },
+  { name: 'Black Pepper', nameHindi: 'काली मिर्च', category: 'spices' },
+  { name: 'Clove', nameHindi: 'लौंग', category: 'spices' },
+  { name: 'Fennel', nameHindi: 'सौंफ', category: 'spices' },
+  
+  // Fibres
   { name: 'Cotton', nameHindi: 'कपास', category: 'fibres' },
+  { name: 'Jute', nameHindi: 'जूट', category: 'fibres' },
+  
+  // Cash Crops
+  { name: 'Sugarcane', nameHindi: 'गन्ना', category: 'cash_crops' },
+  { name: 'Tea', nameHindi: 'चाय', category: 'cash_crops' },
+  { name: 'Coffee', nameHindi: 'कॉफी', category: 'cash_crops' },
+  { name: 'Tobacco', nameHindi: 'तंबाकू', category: 'cash_crops' },
 ];
 
-// State-wise average prices (fallback data based on recent market trends)
-const stateBasePrices: Record<string, Record<string, number>> = {
-  'Uttar Pradesh': { Rice: 2150, Wheat: 2275, Maize: 2090, Potato: 1200, Onion: 2500, Tomato: 3000, Soybean: 4500, Cotton: 6800 },
-  'Punjab': { Rice: 2203, Wheat: 2275, Maize: 2100, Potato: 1100, Onion: 2200, Tomato: 2800, Soybean: 4600, Cotton: 7000 },
-  'Haryana': { Rice: 2203, Wheat: 2275, Maize: 2050, Potato: 1150, Onion: 2300, Tomato: 2900, Soybean: 4550, Cotton: 6900 },
-  'Madhya Pradesh': { Rice: 2100, Wheat: 2275, Maize: 1950, Potato: 1300, Onion: 2400, Tomato: 3200, Soybean: 4400, Cotton: 6700 },
-  'Maharashtra': { Rice: 2200, Wheat: 2400, Maize: 2000, Potato: 1400, Onion: 2100, Tomato: 2700, Soybean: 4350, Cotton: 6850 },
-  'Gujarat': { Rice: 2250, Wheat: 2350, Maize: 2100, Potato: 1250, Onion: 2600, Tomato: 3100, Soybean: 4450, Cotton: 7100 },
-  'Rajasthan': { Rice: 2300, Wheat: 2275, Maize: 2000, Potato: 1350, Onion: 2550, Tomato: 3300, Soybean: 4500, Cotton: 6750 },
-  'Bihar': { Rice: 2050, Wheat: 2200, Maize: 1900, Potato: 1000, Onion: 2700, Tomato: 3400, Soybean: 4600, Cotton: 6600 },
-  'West Bengal': { Rice: 2000, Wheat: 2300, Maize: 1950, Potato: 950, Onion: 2800, Tomato: 3500, Soybean: 4700, Cotton: 6500 },
-  'Karnataka': { Rice: 2150, Wheat: 2400, Maize: 2050, Potato: 1450, Onion: 2200, Tomato: 2600, Soybean: 4300, Cotton: 7000 },
-  'Tamil Nadu': { Rice: 2100, Wheat: 2450, Maize: 2100, Potato: 1500, Onion: 2350, Tomato: 2500, Soybean: 4400, Cotton: 6900 },
-  'Andhra Pradesh': { Rice: 2180, Wheat: 2400, Maize: 2000, Potato: 1400, Onion: 2400, Tomato: 2650, Soybean: 4350, Cotton: 6950 },
-  'Telangana': { Rice: 2170, Wheat: 2380, Maize: 1980, Potato: 1420, Onion: 2450, Tomato: 2700, Soybean: 4380, Cotton: 6920 },
-  'default': { Rice: 2150, Wheat: 2275, Maize: 2000, Potato: 1250, Onion: 2400, Tomato: 3000, Soybean: 4450, Cotton: 6800 },
+// Base prices for all crops (INR per quintal/unit)
+const basePrices: Record<string, number> = {
+  // Cereals
+  Rice: 2150, Wheat: 2275, Maize: 2090, Bajra: 2350, Jowar: 2900, Barley: 1850, Ragi: 3750,
+  // Pulses
+  Chana: 5400, 'Arhar/Tur Dal': 6800, Moong: 7800, Urad: 6600, Masoor: 6200, Rajma: 8500, Lobia: 6000,
+  // Vegetables (per quintal)
+  Potato: 1200, Onion: 2500, Tomato: 3000, Cauliflower: 2800, Cabbage: 1800, Brinjal: 2200,
+  'Lady Finger': 3500, 'Green Peas': 4500, Carrot: 2600, Radish: 1500, Spinach: 2000,
+  'Bitter Gourd': 3800, 'Bottle Gourd': 2000, Cucumber: 2500, Capsicum: 4200, 'Green Chilli': 5500,
+  Ginger: 8000, Garlic: 12000, Coriander: 6500, Fenugreek: 4000, Drumstick: 4500, Pumpkin: 1800,
+  // Fruits
+  Mango: 6000, Banana: 2500, Apple: 12000, Grapes: 8000, Papaya: 2800, Guava: 4000,
+  Watermelon: 1500, Pomegranate: 9500, Orange: 5500, Lemon: 7000,
+  // Oilseeds
+  Soybean: 4500, Groundnut: 5800, Mustard: 5200, Sunflower: 5500, Sesame: 11000, Castor: 6200, Coconut: 2800,
+  // Spices
+  Turmeric: 9500, 'Red Chilli': 14000, Cumin: 32000, 'Coriander Seeds': 8500, Cardamom: 150000,
+  'Black Pepper': 48000, Clove: 95000, Fennel: 14000,
+  // Fibres
+  Cotton: 6800, Jute: 4800,
+  // Cash Crops
+  Sugarcane: 350, Tea: 22000, Coffee: 45000, Tobacco: 15000,
+};
+
+// State-wise price multipliers
+const stateMultipliers: Record<string, number> = {
+  'Uttar Pradesh': 1.0, 'Punjab': 1.03, 'Haryana': 1.02, 'Madhya Pradesh': 0.98,
+  'Maharashtra': 1.05, 'Gujarat': 1.04, 'Rajasthan': 1.01, 'Bihar': 0.95,
+  'West Bengal': 0.97, 'Karnataka': 1.06, 'Tamil Nadu': 1.08, 'Andhra Pradesh': 1.03,
+  'Telangana': 1.04, 'Kerala': 1.10, 'Odisha': 0.96, 'Assam': 0.94,
+  'Jharkhand': 0.95, 'Chhattisgarh': 0.97, 'Uttarakhand': 1.02, 'Himachal Pradesh': 1.05,
+  'default': 1.0,
 };
 
 // Generate historical prices for the last 7 days
@@ -88,12 +179,12 @@ serve(async (req) => {
     
     console.log(`Fetching market prices for state: ${state}, city: ${city}`);
     
-    // Get base prices for the state
-    const basePrices = stateBasePrices[state] || stateBasePrices['default'];
+    // Get state multiplier
+    const multiplier = stateMultipliers[state] || stateMultipliers['default'];
     
     // Generate realistic market data
     const marketData = majorCrops.map(crop => {
-      const basePrice = basePrices[crop.name] || 2000;
+      const basePrice = (basePrices[crop.name] || 2000) * multiplier;
       const { price, change, trend, history } = getRealisticPriceVariation(basePrice, crop.name);
       
       return {
@@ -103,7 +194,7 @@ serve(async (req) => {
         price: price,
         change: change,
         trend: trend,
-        unit: 'qt', // quintal
+        unit: crop.category === 'fruits' ? 'kg' : 'qt',
         market: city || state || 'Local Mandi',
         history: history,
       };
@@ -111,7 +202,7 @@ serve(async (req) => {
 
     // Sort by category for better display
     const sortedData = marketData.sort((a, b) => {
-      const order = ['cereals', 'vegetables', 'oilseeds', 'fibres'];
+      const order = ['cereals', 'pulses', 'vegetables', 'fruits', 'oilseeds', 'spices', 'fibres', 'cash_crops'];
       return order.indexOf(a.category) - order.indexOf(b.category);
     });
 
@@ -140,11 +231,12 @@ serve(async (req) => {
       name: crop.name,
       nameHindi: crop.nameHindi,
       category: crop.category,
-      price: stateBasePrices['default'][crop.name] || 2000,
+      price: basePrices[crop.name] || 2000,
       change: 0,
       trend: 'up' as const,
-      unit: 'qt',
+      unit: crop.category === 'fruits' ? 'kg' : 'qt',
       market: 'Local Mandi',
+      history: [],
     }));
 
     return new Response(JSON.stringify({
