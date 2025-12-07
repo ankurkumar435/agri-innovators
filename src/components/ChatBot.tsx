@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Send, User, Loader2 } from 'lucide-react';
+import { Bot, Send, User, Loader2, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,20 +11,28 @@ interface Message {
   content: string;
   isBot: boolean;
   timestamp: Date;
+  isSpeaking?: boolean;
 }
+
+// Check for browser support
+const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
 export const ChatBot: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: "Hello! I'm FarmBot AI, your farming companion. Ask me anything about crops, weather, pest control, market trends, or any farming-related questions!",
+      content: "Hello! I'm FarmBot AI, your farming companion. Ask me anything about crops, weather, pest control, market trends, or any farming-related questions! You can also use voice input by clicking the microphone button.",
       isBot: true,
       timestamp: new Date(),
     }
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
   const { toast } = useToast();
 
   const scrollToBottom = () => {
@@ -34,6 +42,160 @@ export const ChatBot: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Initialize speech recognition
+  useEffect(() => {
+    if (SpeechRecognition) {
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'en-IN'; // Default to Indian English, supports Hindi too
+      
+      recognitionRef.current.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0])
+          .map((result: any) => result.transcript)
+          .join('');
+        
+        setInputMessage(transcript);
+        
+        // If final result, send the message
+        if (event.results[0].isFinal) {
+          setIsListening(false);
+        }
+      };
+
+      recognitionRef.current.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+        if (event.error === 'not-allowed') {
+          toast({
+            title: "Microphone Access Denied",
+            description: "Please allow microphone access to use voice input.",
+            variant: "destructive",
+          });
+        }
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+    };
+  }, [toast]);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.src = '';
+      }
+    };
+  }, [currentAudio]);
+
+  const toggleListening = () => {
+    if (!SpeechRecognition) {
+      toast({
+        title: "Not Supported",
+        description: "Voice input is not supported in your browser. Please use Chrome or Edge.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      try {
+        // Set language to auto-detect (supports multiple Indian languages)
+        recognitionRef.current.lang = 'hi-IN'; // Hindi
+        recognitionRef.current?.start();
+        setIsListening(true);
+        toast({
+          title: "Listening...",
+          description: "Speak now. You can speak in English, Hindi, or other languages.",
+        });
+      } catch (error) {
+        console.error('Error starting speech recognition:', error);
+        toast({
+          title: "Error",
+          description: "Could not start voice input. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const speakMessage = async (messageId: string, content: string) => {
+    // Stop any currently playing audio
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.src = '';
+      setCurrentAudio(null);
+    }
+
+    if (speakingMessageId === messageId) {
+      setSpeakingMessageId(null);
+      return;
+    }
+
+    setSpeakingMessageId(messageId);
+
+    try {
+      // Detect language from content
+      const hasHindi = /[\u0900-\u097F]/.test(content);
+      const hasPunjabi = /[\u0A00-\u0A7F]/.test(content);
+      const hasMarathi = /[\u0900-\u097F]/.test(content); // Same script as Hindi
+      
+      let language = 'english';
+      if (hasHindi) language = 'hindi';
+      else if (hasPunjabi) language = 'punjabi';
+
+      const { data, error } = await supabase.functions.invoke('text-to-speech', {
+        body: { text: content, language }
+      });
+
+      if (error) throw error;
+
+      if (data.audioContent) {
+        const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+        setCurrentAudio(audio);
+        
+        audio.onended = () => {
+          setSpeakingMessageId(null);
+          setCurrentAudio(null);
+        };
+
+        audio.onerror = () => {
+          console.error('Audio playback error');
+          setSpeakingMessageId(null);
+          setCurrentAudio(null);
+          toast({
+            title: "Playback Error",
+            description: "Could not play audio. Please try again.",
+            variant: "destructive",
+          });
+        };
+
+        await audio.play();
+      }
+    } catch (error) {
+      console.error('Error generating speech:', error);
+      setSpeakingMessageId(null);
+      toast({
+        title: "Error",
+        description: "Could not generate speech. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const quickQuestions = [
     "What's the best time to plant rice?",
@@ -147,9 +309,26 @@ export const ChatBot: React.FC = () => {
               }`}
             >
               <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-              <span className="text-xs opacity-70 mt-1 block">
-                {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-xs opacity-70">
+                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                {message.isBot && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`h-6 w-6 ml-2 ${speakingMessageId === message.id ? 'text-primary' : ''}`}
+                    onClick={() => speakMessage(message.id, message.content)}
+                    title={speakingMessageId === message.id ? "Stop speaking" : "Speak this message"}
+                  >
+                    {speakingMessageId === message.id ? (
+                      <VolumeX className="w-4 h-4" />
+                    ) : (
+                      <Volume2 className="w-4 h-4" />
+                    )}
+                  </Button>
+                )}
+              </div>
             </div>
             {!message.isBot && (
               <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center flex-shrink-0">
@@ -188,9 +367,34 @@ export const ChatBot: React.FC = () => {
         </div>
       </Card>
 
+      {/* Voice Status Indicator */}
+      {isListening && (
+        <Card className="p-3 bg-primary/10 border-primary">
+          <div className="flex items-center gap-2 text-primary">
+            <div className="w-3 h-3 bg-primary rounded-full animate-pulse" />
+            <span className="text-sm font-medium">Listening... Speak now</span>
+          </div>
+        </Card>
+      )}
+
       {/* Message Input */}
       <Card className="p-4">
         <form onSubmit={handleSubmit} className="flex gap-2">
+          <Button
+            type="button"
+            variant={isListening ? "destructive" : "outline"}
+            size="icon"
+            onClick={toggleListening}
+            disabled={isLoading}
+            className="flex-shrink-0"
+            title={isListening ? "Stop listening" : "Start voice input"}
+          >
+            {isListening ? (
+              <MicOff className="w-4 h-4" />
+            ) : (
+              <Mic className="w-4 h-4" />
+            )}
+          </Button>
           <Input
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
@@ -210,6 +414,9 @@ export const ChatBot: React.FC = () => {
             )}
           </Button>
         </form>
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          🎤 Click the mic to speak in English, Hindi, or other languages
+        </p>
       </Card>
     </div>
   );
