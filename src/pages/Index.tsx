@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Lightbulb, Bug, Mountain, Cpu, MessageCircle, TrendingUp } from 'lucide-react';
+import { Lightbulb, Bug, Mountain, Cpu, MessageCircle } from 'lucide-react';
 import { UserHeader } from '@/components/UserHeader';
 import { QuickActionCard } from '@/components/QuickActionCard';
 import { WeatherCard } from '@/components/WeatherCard';
 import { FarmerTripCard } from '@/components/FarmerTripCard';
-import { MarketTrendsCard } from '@/components/MarketTrendsCard';
+
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { ContentSection } from '@/components/ContentSection';
 import { useToast } from '@/hooks/use-toast';
@@ -149,11 +149,6 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Market Trends */}
-          <div>
-            <h2 className="text-lg font-semibold text-foreground mb-3">Market Trends</h2>
-            <MarketTrendsCard />
-          </div>
 
           {/* Farming Tips */}
           <div className="bg-gradient-earth text-white p-4 rounded-2xl">
