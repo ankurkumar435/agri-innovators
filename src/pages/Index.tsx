@@ -4,7 +4,7 @@ import { UserHeader } from '@/components/UserHeader';
 import { QuickActionCard } from '@/components/QuickActionCard';
 import { WeatherCard } from '@/components/WeatherCard';
 import { FarmerTripCard } from '@/components/FarmerTripCard';
-
+import { SoilConditionsModal } from '@/components/SoilConditionsModal';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { ContentSection } from '@/components/ContentSection';
 import { useToast } from '@/hooks/use-toast';
@@ -14,6 +14,7 @@ import farmHero from '@/assets/farm-hero.jpg';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('home');
+  const [showSoilModal, setShowSoilModal] = useState(false);
   const { toast } = useToast();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -56,7 +57,7 @@ const Index = () => {
       icon: Mountain,
       title: 'Soil Conditions',
       description: 'Monitor soil health and nutrients',
-      action: () => toast({ title: 'Soil Analysis', description: 'Checking soil conditions...' })
+      action: () => setShowSoilModal(true)
     },
     {
       icon: Cpu,
@@ -169,6 +170,8 @@ const Index = () => {
       )}
 
       <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+      
+      <SoilConditionsModal isOpen={showSoilModal} onClose={() => setShowSoilModal(false)} />
     </div>
   );
 };
