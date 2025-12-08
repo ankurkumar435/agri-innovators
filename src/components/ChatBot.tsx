@@ -312,7 +312,13 @@ export const ChatBot: React.FC = () => {
                   : 'bg-primary text-white'
               }`}
             >
-              <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+              <div className="text-sm whitespace-pre-wrap leading-relaxed">
+                {message.content.split('\n').map((line, idx) => (
+                  <p key={idx} className={`${line.startsWith('•') ? 'pl-1 my-1' : 'my-2'}`}>
+                    {line}
+                  </p>
+                ))}
+              </div>
               <div className="flex items-center justify-between mt-2">
                 <span className="text-xs opacity-70">
                   {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
