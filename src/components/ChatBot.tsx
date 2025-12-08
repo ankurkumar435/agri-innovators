@@ -30,7 +30,6 @@ export const ChatBot: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
-  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const { toast } = useToast();
@@ -89,15 +88,12 @@ export const ChatBot: React.FC = () => {
     };
   }, [toast]);
 
-  // Cleanup audio on unmount
+  // Cleanup speech synthesis on unmount
   useEffect(() => {
     return () => {
-      if (currentAudio) {
-        currentAudio.pause();
-        currentAudio.src = '';
-      }
+      window.speechSynthesis?.cancel();
     };
-  }, [currentAudio]);
+  }, []);
 
   const toggleListening = () => {
     if (!SpeechRecognition) {
@@ -133,13 +129,19 @@ export const ChatBot: React.FC = () => {
     }
   };
 
-  const speakMessage = async (messageId: string, content: string) => {
-    // Stop any currently playing audio
-    if (currentAudio) {
-      currentAudio.pause();
-      currentAudio.src = '';
-      setCurrentAudio(null);
+  const speakMessage = (messageId: string, content: string) => {
+    // Check if speech synthesis is supported
+    if (!('speechSynthesis' in window)) {
+      toast({
+        title: "Not Supported",
+        description: "Text-to-speech is not supported in your browser.",
+        variant: "destructive",
+      });
+      return;
     }
+
+    // Stop any currently playing speech
+    window.speechSynthesis.cancel();
 
     if (speakingMessageId === messageId) {
       setSpeakingMessageId(null);
@@ -152,40 +154,42 @@ export const ChatBot: React.FC = () => {
       // Detect language from content
       const hasHindi = /[\u0900-\u097F]/.test(content);
       const hasPunjabi = /[\u0A00-\u0A7F]/.test(content);
-      const hasMarathi = /[\u0900-\u097F]/.test(content); // Same script as Hindi
+      const hasMarathi = /[\u0900-\u097F]/.test(content);
       
-      let language = 'english';
-      if (hasHindi) language = 'hindi';
-      else if (hasPunjabi) language = 'punjabi';
-
-      const { data, error } = await supabase.functions.invoke('text-to-speech', {
-        body: { text: content, language }
-      });
-
-      if (error) throw error;
-
-      if (data.audioContent) {
-        const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
-        setCurrentAudio(audio);
-        
-        audio.onended = () => {
-          setSpeakingMessageId(null);
-          setCurrentAudio(null);
-        };
-
-        audio.onerror = () => {
-          console.error('Audio playback error');
-          setSpeakingMessageId(null);
-          setCurrentAudio(null);
-          toast({
-            title: "Playback Error",
-            description: "Could not play audio. Please try again.",
-            variant: "destructive",
-          });
-        };
-
-        await audio.play();
+      let langCode = 'en-IN'; // Default to Indian English
+      if (hasPunjabi) {
+        langCode = 'pa-IN'; // Punjabi
+      } else if (hasHindi || hasMarathi) {
+        langCode = 'hi-IN'; // Hindi (also works for Marathi Devanagari script)
       }
+
+      const utterance = new SpeechSynthesisUtterance(content);
+      utterance.lang = langCode;
+      utterance.rate = 0.9;
+      utterance.pitch = 1;
+
+      // Get available voices and try to find a matching one
+      const voices = window.speechSynthesis.getVoices();
+      const matchingVoice = voices.find(voice => voice.lang.startsWith(langCode.split('-')[0]));
+      if (matchingVoice) {
+        utterance.voice = matchingVoice;
+      }
+
+      utterance.onend = () => {
+        setSpeakingMessageId(null);
+      };
+
+      utterance.onerror = (event) => {
+        console.error('Speech synthesis error:', event);
+        setSpeakingMessageId(null);
+        toast({
+          title: "Speech Error",
+          description: "Could not speak the message. Please try again.",
+          variant: "destructive",
+        });
+      };
+
+      window.speechSynthesis.speak(utterance);
     } catch (error) {
       console.error('Error generating speech:', error);
       setSpeakingMessageId(null);
