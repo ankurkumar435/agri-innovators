@@ -159,6 +159,16 @@ Always be encouraging and supportive to farmers, understanding their challenges 
       console.log('AI response generated via Lovable AI');
     }
 
+    // Clean up markdown formatting for better readability
+    reply = reply
+      .replace(/\*\*\*(.*?)\*\*\*/g, '$1')  // Remove ***text***
+      .replace(/\*\*(.*?)\*\*/g, '$1')       // Remove **text**
+      .replace(/\*(.*?)\*/g, '$1')           // Remove *text*
+      .replace(/#{1,6}\s?/g, '')             // Remove # headers
+      .replace(/`{1,3}[^`]*`{1,3}/g, (match) => match.replace(/`/g, ''))  // Remove code backticks
+      .replace(/\n{3,}/g, '\n\n')            // Reduce multiple newlines
+      .trim();
+
     return new Response(JSON.stringify({ reply }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
