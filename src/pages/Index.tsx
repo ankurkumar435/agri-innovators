@@ -5,9 +5,10 @@ import { QuickActionCard } from '@/components/QuickActionCard';
 import { WeatherCard } from '@/components/WeatherCard';
 import { FarmerTripCard } from '@/components/FarmerTripCard';
 import { SoilConditionsModal } from '@/components/SoilConditionsModal';
+import { CropAdvisoryModal } from '@/components/CropAdvisoryModal';
+import { AIRecommendationsModal } from '@/components/AIRecommendationsModal';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { ContentSection } from '@/components/ContentSection';
-import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import farmHero from '@/assets/farm-hero.jpg';
@@ -15,7 +16,8 @@ import farmHero from '@/assets/farm-hero.jpg';
 const Index = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [showSoilModal, setShowSoilModal] = useState(false);
-  const { toast } = useToast();
+  const [showCropAdvisory, setShowCropAdvisory] = useState(false);
+  const [showAIRecommendations, setShowAIRecommendations] = useState(false);
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
@@ -45,13 +47,13 @@ const Index = () => {
       icon: Lightbulb,
       title: 'Crop Advisory',
       description: 'Expert farming tips and recommendations',
-      action: () => toast({ title: 'Crop Advisory', description: 'Opening crop advisory dashboard...' })
+      action: () => setShowCropAdvisory(true)
     },
     {
       icon: Bug,
       title: 'Pest & Diseases',
       description: 'Identify and treat crop problems',
-      action: () => toast({ title: 'Pest Control', description: 'Analyzing pest and disease data...' })
+      action: () => setActiveTab('scan')
     },
     {
       icon: Mountain,
@@ -63,7 +65,7 @@ const Index = () => {
       icon: Cpu,
       title: 'AI Recommendations',
       description: 'Smart farming suggestions',
-      action: () => toast({ title: 'AI Assistant', description: 'Generating personalized recommendations...' })
+      action: () => setShowAIRecommendations(true)
     }
   ];
 
@@ -172,6 +174,8 @@ const Index = () => {
       <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
       
       <SoilConditionsModal isOpen={showSoilModal} onClose={() => setShowSoilModal(false)} />
+      <CropAdvisoryModal isOpen={showCropAdvisory} onClose={() => setShowCropAdvisory(false)} />
+      <AIRecommendationsModal isOpen={showAIRecommendations} onClose={() => setShowAIRecommendations(false)} />
     </div>
   );
 };
