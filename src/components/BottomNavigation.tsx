@@ -1,19 +1,19 @@
-import React, { useState } from 'react';
-import { Home, Store, Scan, Bot, User } from 'lucide-react';
+import React from 'react';
+import { Home, Store, Scan, Bot, User, LucideIcon } from 'lucide-react';
 
 interface NavigationItem {
   id: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: LucideIcon;
   label: string;
-  hasLogo?: boolean;
+  gradient: string;
 }
 
 const navigationItems: NavigationItem[] = [
-  { id: 'home', icon: Home, label: 'Home' },
-  { id: 'market', icon: Store, label: 'Market', hasLogo: true },
-  { id: 'scan', icon: Scan, label: 'Scan' },
-  { id: 'ai-bot', icon: Bot, label: 'AI Bot' },
-  { id: 'profile', icon: User, label: 'Profile' },
+  { id: 'home', icon: Home, label: 'Home', gradient: 'from-emerald-500 to-teal-500' },
+  { id: 'market', icon: Store, label: 'Market', gradient: 'from-amber-500 to-orange-500' },
+  { id: 'scan', icon: Scan, label: 'Scan', gradient: 'from-cyan-500 to-blue-500' },
+  { id: 'ai-bot', icon: Bot, label: 'AI Bot', gradient: 'from-violet-500 to-purple-500' },
+  { id: 'profile', icon: User, label: 'Profile', gradient: 'from-rose-500 to-pink-500' },
 ];
 
 interface BottomNavigationProps {
@@ -26,36 +26,83 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   onTabChange 
 }) => {
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
-      <div className="flex items-center justify-around py-2 px-4 max-w-md mx-auto">
-        {navigationItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
-          
-          return (
-            <button
-              key={item.id}
-              onClick={() => onTabChange(item.id)}
-              className={`flex flex-col items-center py-2 px-3 rounded-lg transition-all duration-200 ${
-                isActive 
-                  ? 'text-primary bg-primary/10' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <div className="relative">
-                <Icon className={`w-6 h-6 ${isActive ? 'text-primary' : ''}`} />
-                {item.hasLogo && (
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-nature-secondary rounded-full border-2 border-card"></div>
-                )}
-              </div>
-              <span className={`text-xs mt-1 font-medium ${
-                isActive ? 'text-primary' : 'text-muted-foreground'
-              }`}>
-                {item.label}
-              </span>
-            </button>
-          );
-        })}
+    <div className="fixed bottom-4 left-4 right-4 z-50">
+      <div className="nav-floating max-w-md mx-auto">
+        <div className="flex items-center justify-around py-3 px-2">
+          {navigationItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            
+            return (
+              <button
+                key={item.id}
+                onClick={() => onTabChange(item.id)}
+                className="flex flex-col items-center gap-1 transition-all duration-300"
+              >
+                {/* 3D Icon Container */}
+                <div
+                  className={`
+                    relative p-3 rounded-2xl transition-all duration-300 transform
+                    ${isActive 
+                      ? `bg-gradient-to-br ${item.gradient} shadow-lg scale-110 -translate-y-1` 
+                      : 'bg-secondary hover:bg-secondary/80 hover:scale-105'
+                    }
+                  `}
+                  style={{
+                    boxShadow: isActive 
+                      ? `0 4px 0 rgba(0,0,0,0.15), 0 8px 24px rgba(0,0,0,0.2), inset 0 2px 4px rgba(255,255,255,0.2)`
+                      : `0 2px 4px rgba(0,0,0,0.05), inset 0 1px 2px rgba(255,255,255,0.1)`,
+                    transform: isActive ? 'translateY(-4px) scale(1.1)' : undefined,
+                  }}
+                >
+                  {/* Shine effect */}
+                  <div 
+                    className={`absolute inset-0 rounded-2xl overflow-hidden ${isActive ? 'opacity-100' : 'opacity-0'}`}
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 50%)',
+                    }}
+                  />
+                  
+                  {/* Icon */}
+                  <Icon 
+                    className={`w-5 h-5 relative z-10 transition-colors duration-300 ${
+                      isActive ? 'text-white' : 'text-muted-foreground'
+                    }`}
+                    strokeWidth={isActive ? 2.5 : 2}
+                  />
+                  
+                  {/* Glow effect for active state */}
+                  {isActive && (
+                    <div 
+                      className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${item.gradient} blur-xl opacity-50 -z-10`}
+                      style={{ transform: 'scale(1.5)' }}
+                    />
+                  )}
+                </div>
+                
+                {/* Label */}
+                <span 
+                  className={`text-[10px] font-semibold transition-all duration-300 ${
+                    isActive 
+                      ? 'text-foreground' 
+                      : 'text-muted-foreground'
+                  }`}
+                >
+                  {item.label}
+                </span>
+                
+                {/* Active indicator dot */}
+                <div 
+                  className={`h-1 rounded-full transition-all duration-300 ${
+                    isActive 
+                      ? `w-4 bg-gradient-to-r ${item.gradient}` 
+                      : 'w-0 bg-transparent'
+                  }`}
+                />
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
