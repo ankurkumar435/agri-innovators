@@ -150,6 +150,21 @@ const Auth = () => {
       if (error) throw error;
 
       if (data.user) {
+        // Create profile with phone number
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            user_id: data.user.id,
+            farmer_name: `${signUpData.firstName} ${signUpData.lastName}`,
+            farm_name: signUpData.farmName,
+            phone: signUpData.phone,
+            location: location
+          }, { onConflict: 'user_id' });
+
+        if (profileError) {
+          console.error('Error saving profile:', profileError);
+        }
+
         // Store location data if available
         if (currentLocation) {
           const { error: locationError } = await supabase
@@ -159,9 +174,9 @@ const Auth = () => {
                 user_id: data.user.id,
                 latitude: currentLocation.lat,
                 longitude: currentLocation.lng,
-                city: location.split(',')[0] || '',
-                region: location.split(',')[1] || '',
-                country: location.split(',')[2] || ''
+                city: location.split(',')[0]?.trim() || '',
+                region: location.split(',')[1]?.trim() || '',
+                country: location.split(',')[2]?.trim() || ''
               }
             ]);
 
