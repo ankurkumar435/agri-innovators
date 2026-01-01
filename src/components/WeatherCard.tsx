@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Sun, Droplets, Wind, CloudSnow, CloudDrizzle, MapPin } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Cloud, CloudRain, Sun, Droplets, Wind, CloudSnow, CloudDrizzle, MapPin, RefreshCw } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -20,12 +20,19 @@ interface WeatherData {
     condition: string;
     icon: string;
   }>;
+  location?: {
+    name: string;
+    region: string;
+    country: string;
+  };
 }
 
 export const WeatherCard: React.FC = () => {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [locationName, setLocationName] = useState<string>('');
+  const [currentCoords, setCurrentCoords] = useState<{ lat: number; lon: number } | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -47,130 +54,234 @@ export const WeatherCard: React.FC = () => {
     return Cloud;
   };
 
-  useEffect(() => {
-    let cancelled = false;
+  const fetchWeatherForLocation = useCallback(async (lat: number, lon: number, locationText?: string) => {
+    try {
+      console.log('Fetching weather for:', { lat, lon });
+      const { data, error } = await supabase.functions.invoke('weather', {
+        body: { lat, lon },
+      });
 
-    const fetchWeatherForLocation = async (lat: number, lon: number, locationText?: string) => {
-      try {
-        const { data, error } = await supabase.functions.invoke('weather', {
-          body: { lat, lon },
-        });
-
-        if (error) {
-          console.error('Weather API error:', error);
-          throw error;
-        }
-
-        if (!cancelled && data) {
-          setWeatherData(data);
-          if (data.location) {
-            setLocationName(`${data.location.name}, ${data.location.country}`);
-          } else if (locationText) {
-            setLocationName(locationText);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching weather:', error);
-        toast({
-          title: 'Weather Unavailable',
-          description: 'Unable to fetch weather data. Please try again later.',
-          variant: 'destructive',
-        });
-      } finally {
-        if (!cancelled) setLoading(false);
+      if (error) {
+        console.error('Weather API error:', error);
+        throw error;
       }
-    };
 
-    const fetchWeatherData = async () => {
-      try {
-        setLoading(true);
+      if (data) {
+        setWeatherData(data);
+        setCurrentCoords({ lat, lon });
+        if (data.location) {
+          setLocationName(`${data.location.name}, ${data.location.country}`);
+        } else if (locationText) {
+          setLocationName(locationText);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching weather:', error);
+      toast({
+        title: 'Weather Unavailable',
+        description: 'Unable to fetch weather data. Please try again later.',
+        variant: 'destructive',
+      });
+    }
+  }, [toast]);
 
-        // First, try to get user's stored location from database
-        if (user) {
-          const { data: userLocation, error: locationError } = await supabase
-            .from('user_locations')
-            .select('latitude, longitude, city, region, country')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
+  const fetchWeatherData = useCallback(async () => {
+    try {
+      setLoading(true);
 
-          if (!locationError && userLocation && userLocation.latitude && userLocation.longitude) {
-            console.log('Using stored user location:', userLocation);
-            const locationText = [userLocation.city, userLocation.region, userLocation.country]
+      // First, try to get user's stored location from database
+      if (user) {
+        const { data: userLocation, error: locationError } = await supabase
+          .from('user_locations')
+          .select('latitude, longitude, city, region, country')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (!locationError && userLocation && userLocation.latitude && userLocation.longitude) {
+          console.log('Using stored user location:', userLocation);
+          const locationText = [userLocation.city, userLocation.region, userLocation.country]
+            .filter(Boolean)
+            .join(', ');
+          await fetchWeatherForLocation(
+            Number(userLocation.latitude), 
+            Number(userLocation.longitude),
+            locationText
+          );
+          setLoading(false);
+          return;
+        }
+      }
+
+      // If no stored location, try browser geolocation
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            console.log('Using browser geolocation:', { latitude, longitude });
+            
+            // Save location for logged-in users
+            if (user) {
+              try {
+                const response = await fetch(
+                  `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+                );
+                const geoData = await response.json();
+                
+                await supabase.from('user_locations').upsert({
+                  user_id: user.id,
+                  latitude,
+                  longitude,
+                  city: geoData.city || '',
+                  region: geoData.principalSubdivision || '',
+                  country: geoData.countryName || '',
+                  updated_at: new Date().toISOString()
+                }, { onConflict: 'user_id' });
+              } catch (err) {
+                console.error('Error saving location:', err);
+              }
+            }
+
+            await fetchWeatherForLocation(latitude, longitude);
+            setLoading(false);
+          },
+          async (geoErr) => {
+            console.error('Geolocation error:', geoErr.message);
+            toast({
+              title: 'Location Access Denied',
+              description: 'Please enable location access for accurate weather data.',
+              variant: 'default',
+            });
+            // Use default location as fallback
+            setLocationName('New York, USA');
+            await fetchWeatherForLocation(40.7128, -74.0060, 'New York, USA');
+            setLoading(false);
+          },
+          { timeout: 10000, enableHighAccuracy: true, maximumAge: 300000 }
+        );
+      } else {
+        // Geolocation not available
+        setLocationName('New York, USA');
+        await fetchWeatherForLocation(40.7128, -74.0060, 'New York, USA');
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Error in fetchWeatherData:', error);
+      setLoading(false);
+    }
+  }, [user, toast, fetchWeatherForLocation]);
+
+  // Manual refresh handler
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    
+    try {
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            
+            // Update location in database for logged-in users
+            if (user) {
+              try {
+                const response = await fetch(
+                  `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+                );
+                const geoData = await response.json();
+                
+                const locationText = [geoData.city, geoData.principalSubdivision, geoData.countryName]
+                  .filter(Boolean)
+                  .join(', ');
+                
+                await supabase.from('user_locations').upsert({
+                  user_id: user.id,
+                  latitude,
+                  longitude,
+                  city: geoData.city || '',
+                  region: geoData.principalSubdivision || '',
+                  country: geoData.countryName || '',
+                  updated_at: new Date().toISOString()
+                }, { onConflict: 'user_id' });
+                
+                await fetchWeatherForLocation(latitude, longitude, locationText);
+              } catch (err) {
+                console.error('Error updating location:', err);
+                await fetchWeatherForLocation(latitude, longitude);
+              }
+            } else {
+              await fetchWeatherForLocation(latitude, longitude);
+            }
+            setRefreshing(false);
+          },
+          (error) => {
+            console.error('Geolocation error:', error);
+            toast({
+              title: 'Location Error',
+              description: 'Unable to get current location.',
+              variant: 'destructive',
+            });
+            setRefreshing(false);
+          },
+          { enableHighAccuracy: true, timeout: 10000 }
+        );
+      }
+    } catch (error) {
+      console.error('Error refreshing:', error);
+      setRefreshing(false);
+    }
+  };
+
+  // Initial fetch
+  useEffect(() => {
+    fetchWeatherData();
+  }, [fetchWeatherData]);
+
+  // Subscribe to realtime location changes
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('weather_location_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_locations',
+          filter: `user_id=eq.${user.id}`
+        },
+        async (payload) => {
+          console.log('Location changed, refreshing weather:', payload);
+          const newData = payload.new as any;
+          if (newData && newData.latitude && newData.longitude) {
+            const locationText = [newData.city, newData.region, newData.country]
               .filter(Boolean)
               .join(', ');
             await fetchWeatherForLocation(
-              Number(userLocation.latitude), 
-              Number(userLocation.longitude),
+              Number(newData.latitude),
+              Number(newData.longitude),
               locationText
             );
-            return;
           }
         }
-
-        // If no stored location, try browser geolocation
-        if ('geolocation' in navigator) {
-          navigator.geolocation.getCurrentPosition(
-            async (position) => {
-              const { latitude, longitude } = position.coords;
-              console.log('Using browser geolocation:', { latitude, longitude });
-              
-              // Save location for logged-in users
-              if (user) {
-                try {
-                  const response = await fetch(
-                    `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-                  );
-                  const geoData = await response.json();
-                  
-                  await supabase.from('user_locations').insert({
-                    user_id: user.id,
-                    latitude,
-                    longitude,
-                    city: geoData.city || '',
-                    region: geoData.principalSubdivision || '',
-                    country: geoData.countryName || ''
-                  });
-                } catch (err) {
-                  console.error('Error saving location:', err);
-                }
-              }
-
-              await fetchWeatherForLocation(latitude, longitude);
-            },
-            async (geoErr) => {
-              console.error('Geolocation error:', geoErr.message);
-              toast({
-                title: 'Location Access Denied',
-                description: 'Please enable location access for accurate weather data.',
-                variant: 'default',
-              });
-              // Use default location as fallback
-              setLocationName('New York, USA');
-              await fetchWeatherForLocation(40.7128, -74.0060, 'New York, USA');
-            },
-            { timeout: 10000, enableHighAccuracy: true, maximumAge: 300000 }
-          );
-        } else {
-          // Geolocation not available
-          setLocationName('New York, USA');
-          await fetchWeatherForLocation(40.7128, -74.0060, 'New York, USA');
-        }
-      } catch (error) {
-        console.error('Error in fetchWeatherData:', error);
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    fetchWeatherData();
-    const interval = setInterval(fetchWeatherData, 15 * 60 * 1000); // refresh every 15 minutes
+      )
+      .subscribe();
 
     return () => {
-      cancelled = true;
-      clearInterval(interval);
+      supabase.removeChannel(channel);
     };
-  }, [user, toast]);
+  }, [user, fetchWeatherForLocation]);
+
+  // Auto-refresh every 15 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (currentCoords) {
+        fetchWeatherForLocation(currentCoords.lat, currentCoords.lon, locationName);
+      }
+    }, 15 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [currentCoords, locationName, fetchWeatherForLocation]);
 
   if (loading) {
     return (
@@ -189,6 +300,12 @@ export const WeatherCard: React.FC = () => {
       <Card className="p-4 bg-gradient-sky border-0 text-white">
         <div className="text-center">
           <p>Weather data unavailable</p>
+          <button 
+            onClick={handleRefresh}
+            className="mt-2 text-sm underline opacity-80 hover:opacity-100"
+          >
+            Try again
+          </button>
         </div>
       </Card>
     );
@@ -209,7 +326,16 @@ export const WeatherCard: React.FC = () => {
               </div>
             )}
           </div>
-          <CurrentIcon className="w-8 h-8" />
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="p-1 hover:bg-white/20 rounded-full transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            </button>
+            <CurrentIcon className="w-8 h-8" />
+          </div>
         </div>
         
         <div className="flex items-center justify-between">
