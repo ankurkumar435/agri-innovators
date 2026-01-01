@@ -10,6 +10,7 @@ import { AIRecommendationsModal } from '@/components/AIRecommendationsModal';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { ContentSection } from '@/components/ContentSection';
 import { useAuth } from '@/hooks/useAuth';
+import { useLocationTracker } from '@/hooks/useLocationTracker';
 import { useNavigate } from 'react-router-dom';
 import farmHero from '@/assets/farm-hero.jpg';
 
@@ -20,6 +21,9 @@ const Index = () => {
   const [showAIRecommendations, setShowAIRecommendations] = useState(false);
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  
+  // Start location tracking for live updates
+  useLocationTracker();
 
   useEffect(() => {
     if (!loading && !user) {
