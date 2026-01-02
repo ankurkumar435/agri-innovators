@@ -6,8 +6,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface WeatherAlert {
+  type: 'warning' | 'watch' | 'advisory';
+  severity: 'extreme' | 'severe' | 'moderate' | 'minor';
+  title: string;
+  description: string;
+  icon: string;
+}
+
 function mapWeatherCodeToText(code: number): string {
-  // Open-Meteo weather codes mapping
   const mapping: Record<number, string> = {
     0: 'Clear',
     1: 'Mainly clear',
@@ -41,6 +48,137 @@ function mapWeatherCodeToText(code: number): string {
   return mapping[code] ?? 'Unknown';
 }
 
+function generateWeatherAlerts(
+  weatherCode: number,
+  temp: number,
+  windSpeed: number,
+  humidity: number
+): WeatherAlert[] {
+  const alerts: WeatherAlert[] = [];
+
+  // Extreme heat alert (>40°C)
+  if (temp >= 40) {
+    alerts.push({
+      type: 'warning',
+      severity: 'extreme',
+      title: 'Extreme Heat Warning',
+      description: `Dangerously high temperature of ${temp}°C. Stay indoors, hydrate frequently, and avoid strenuous activities. Protect livestock and crops.`,
+      icon: 'heat',
+    });
+  } else if (temp >= 35) {
+    alerts.push({
+      type: 'advisory',
+      severity: 'moderate',
+      title: 'Heat Advisory',
+      description: `High temperature of ${temp}°C expected. Take precautions and ensure adequate irrigation for crops.`,
+      icon: 'heat',
+    });
+  }
+
+  // Extreme cold alert (<0°C)
+  if (temp <= -10) {
+    alerts.push({
+      type: 'warning',
+      severity: 'extreme',
+      title: 'Extreme Cold Warning',
+      description: `Dangerously low temperature of ${temp}°C. Protect crops from frost and ensure livestock shelter.`,
+      icon: 'cold',
+    });
+  } else if (temp <= 0) {
+    alerts.push({
+      type: 'advisory',
+      severity: 'moderate',
+      title: 'Frost Advisory',
+      description: `Freezing temperature of ${temp}°C. Cover sensitive plants and protect water pipes.`,
+      icon: 'cold',
+    });
+  }
+
+  // Storm and severe weather based on weather code
+  if (weatherCode >= 95) {
+    alerts.push({
+      type: 'warning',
+      severity: 'severe',
+      title: 'Thunderstorm Warning',
+      description: 'Severe thunderstorm in the area. Seek shelter immediately. Secure farm equipment and livestock.',
+      icon: 'storm',
+    });
+  }
+
+  // Heavy rain alerts
+  if ([65, 67, 81, 82].includes(weatherCode)) {
+    alerts.push({
+      type: 'warning',
+      severity: 'severe',
+      title: 'Heavy Rain Warning',
+      description: 'Heavy rainfall expected. Risk of flooding in low-lying areas. Ensure proper drainage in fields.',
+      icon: 'rain',
+    });
+  } else if ([61, 63, 66, 80].includes(weatherCode)) {
+    alerts.push({
+      type: 'advisory',
+      severity: 'moderate',
+      title: 'Rain Advisory',
+      description: 'Moderate rain expected. Plan field activities accordingly.',
+      icon: 'rain',
+    });
+  }
+
+  // Heavy snow alerts
+  if ([75, 86].includes(weatherCode)) {
+    alerts.push({
+      type: 'warning',
+      severity: 'severe',
+      title: 'Heavy Snow Warning',
+      description: 'Heavy snowfall expected. Protect livestock and greenhouse structures.',
+      icon: 'snow',
+    });
+  }
+
+  // High wind alert
+  if (windSpeed >= 60) {
+    alerts.push({
+      type: 'warning',
+      severity: 'severe',
+      title: 'High Wind Warning',
+      description: `Strong winds of ${windSpeed} km/h. Secure loose equipment, support tall crops, and avoid outdoor spraying.`,
+      icon: 'wind',
+    });
+  } else if (windSpeed >= 40) {
+    alerts.push({
+      type: 'advisory',
+      severity: 'moderate',
+      title: 'Wind Advisory',
+      description: `Gusty winds of ${windSpeed} km/h expected. Consider delaying pesticide application.`,
+      icon: 'wind',
+    });
+  }
+
+  // Low humidity (drought risk)
+  if (humidity <= 20 && temp >= 30) {
+    alerts.push({
+      type: 'advisory',
+      severity: 'moderate',
+      title: 'Drought Conditions',
+      description: `Very low humidity (${humidity}%) combined with high temperature. Increase irrigation and monitor soil moisture.`,
+      icon: 'drought',
+    });
+  }
+
+  // Fog advisory
+  if ([45, 48].includes(weatherCode)) {
+    alerts.push({
+      type: 'advisory',
+      severity: 'minor',
+      title: 'Fog Advisory',
+      description: 'Dense fog expected. Reduced visibility may affect transportation. Watch for fungal disease conditions.',
+      icon: 'fog',
+    });
+  }
+
+  return alerts;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -60,7 +198,7 @@ serve(async (req) => {
     // 1) Try RapidAPI (WeatherAPI.com)
     if (rapidApiKey) {
       const rapidRes = await fetch(
-        `https://weatherapi-com.p.rapidapi.com/forecast.json?q=${lat},${lon}&days=4`,
+        `https://weatherapi-com.p.rapidapi.com/forecast.json?q=${lat},${lon}&days=4&alerts=yes`,
         {
           method: 'GET',
           headers: {
@@ -86,6 +224,27 @@ serve(async (req) => {
           }
         );
 
+        // Generate alerts based on current conditions
+        const alerts = generateWeatherAlerts(
+          0, // WeatherAPI uses text conditions, we'll check temp/wind
+          Math.round(weatherData.current.temp_c),
+          Math.round(weatherData.current.wind_kph),
+          weatherData.current.humidity
+        );
+
+        // Add API-provided alerts if available
+        if (weatherData.alerts?.alert?.length > 0) {
+          weatherData.alerts.alert.forEach((alert: any) => {
+            alerts.push({
+              type: 'warning',
+              severity: alert.severity?.toLowerCase() || 'moderate',
+              title: alert.headline || alert.event,
+              description: alert.desc || alert.instruction || '',
+              icon: 'alert',
+            });
+          });
+        }
+
         const response = {
           current: {
             temp: Math.round(weatherData.current.temp_c),
@@ -101,6 +260,7 @@ serve(async (req) => {
             region: weatherData.location.region,
             country: weatherData.location.country,
           },
+          alerts,
         };
 
         return new Response(JSON.stringify(response), {
@@ -109,7 +269,6 @@ serve(async (req) => {
       } else {
         const errorText = await rapidRes.text();
         console.error('Weather API error:', rapidRes.status, errorText);
-        // Fall through to Open-Meteo if 4xx/429
       }
     } else {
       console.warn('RAPIDAPI_KEY not set, falling back to Open-Meteo');
@@ -137,6 +296,9 @@ serve(async (req) => {
 
     const nowCode = Number(meteo.current?.weather_code ?? 0);
     const nowCondition = mapWeatherCodeToText(nowCode);
+    const currentTemp = Math.round(Number(meteo.current?.temperature_2m ?? 0));
+    const currentHumidity = Math.round(Number(meteo.current?.relative_humidity_2m ?? 0));
+    const currentWindSpeed = Math.round(Number(meteo.current?.wind_speed_10m ?? 0));
 
     const dailyForecasts = (meteo.daily?.time ?? []).map((d: string, idx: number) => {
       const date = new Date(d);
@@ -153,16 +315,20 @@ serve(async (req) => {
       };
     });
 
+    // Generate weather alerts based on current conditions
+    const alerts = generateWeatherAlerts(nowCode, currentTemp, currentWindSpeed, currentHumidity);
+
     const response = {
       current: {
-        temp: Math.round(Number(meteo.current?.temperature_2m ?? 0)),
+        temp: currentTemp,
         condition: nowCondition,
-        humidity: Math.round(Number(meteo.current?.relative_humidity_2m ?? 0)),
-        windSpeed: Math.round(Number(meteo.current?.wind_speed_10m ?? 0)),
+        humidity: currentHumidity,
+        windSpeed: currentWindSpeed,
         icon: '',
         main: nowCondition,
       },
       forecast: dailyForecasts,
+      alerts,
     };
 
     return new Response(JSON.stringify(response), {
