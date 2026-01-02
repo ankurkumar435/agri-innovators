@@ -1,9 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Cloud, CloudRain, Sun, Droplets, Wind, CloudSnow, CloudDrizzle, MapPin, RefreshCw } from 'lucide-react';
+import { Cloud, CloudRain, Sun, Droplets, Wind, CloudSnow, CloudDrizzle, MapPin, RefreshCw, AlertTriangle, Thermometer, Snowflake, CloudLightning, CloudFog } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+interface WeatherAlert {
+  type: 'warning' | 'watch' | 'advisory';
+  severity: 'extreme' | 'severe' | 'moderate' | 'minor';
+  title: string;
+  description: string;
+  icon: string;
+}
 
 interface WeatherData {
   current: {
@@ -25,6 +34,7 @@ interface WeatherData {
     region: string;
     country: string;
   };
+  alerts?: WeatherAlert[];
 }
 
 export const WeatherCard: React.FC = () => {
@@ -33,6 +43,7 @@ export const WeatherCard: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [locationName, setLocationName] = useState<string>('');
   const [currentCoords, setCurrentCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [showAllAlerts, setShowAllAlerts] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -54,6 +65,41 @@ export const WeatherCard: React.FC = () => {
     return Cloud;
   };
 
+  // Get alert icon based on alert type
+  const getAlertIcon = (iconType: string) => {
+    switch (iconType) {
+      case 'heat':
+        return Thermometer;
+      case 'cold':
+      case 'snow':
+        return Snowflake;
+      case 'storm':
+        return CloudLightning;
+      case 'rain':
+        return CloudRain;
+      case 'wind':
+        return Wind;
+      case 'fog':
+        return CloudFog;
+      default:
+        return AlertTriangle;
+    }
+  };
+
+  // Get alert color based on severity
+  const getAlertStyles = (severity: string) => {
+    switch (severity) {
+      case 'extreme':
+        return 'bg-red-500/20 border-red-500 text-red-100';
+      case 'severe':
+        return 'bg-orange-500/20 border-orange-500 text-orange-100';
+      case 'moderate':
+        return 'bg-yellow-500/20 border-yellow-500 text-yellow-100';
+      default:
+        return 'bg-blue-500/20 border-blue-500 text-blue-100';
+    }
+  };
+
   const fetchWeatherForLocation = useCallback(async (lat: number, lon: number, locationText?: string) => {
     try {
       console.log('Fetching weather for:', { lat, lon });
@@ -73,6 +119,20 @@ export const WeatherCard: React.FC = () => {
           setLocationName(`${data.location.name}, ${data.location.country}`);
         } else if (locationText) {
           setLocationName(locationText);
+        }
+
+        // Show toast for severe weather alerts
+        if (data.alerts && data.alerts.length > 0) {
+          const severeAlerts = data.alerts.filter(
+            (a: WeatherAlert) => a.severity === 'extreme' || a.severity === 'severe'
+          );
+          if (severeAlerts.length > 0) {
+            toast({
+              title: `⚠️ ${severeAlerts[0].title}`,
+              description: severeAlerts[0].description.substring(0, 100) + '...',
+              variant: 'destructive',
+            });
+          }
         }
       }
     } catch (error) {
@@ -312,62 +372,102 @@ export const WeatherCard: React.FC = () => {
   }
 
   const CurrentIcon = getWeatherIcon(weatherData.current.main);
+  const alerts = weatherData.alerts || [];
+  const displayedAlerts = showAllAlerts ? alerts : alerts.slice(0, 2);
 
   return (
-    <Card className="p-4 bg-gradient-sky border-0 text-white">
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold">Weather Forecast</h3>
-            {locationName && (
-              <div className="flex items-center gap-1 text-sm opacity-90">
-                <MapPin className="w-3 h-3" />
-                <span>{locationName}</span>
+    <div className="space-y-3">
+      <Card className="p-4 bg-gradient-sky border-0 text-white">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">Weather Forecast</h3>
+              {locationName && (
+                <div className="flex items-center gap-1 text-sm opacity-90">
+                  <MapPin className="w-3 h-3" />
+                  <span>{locationName}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="p-1 hover:bg-white/20 rounded-full transition-colors"
+              >
+                <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+              </button>
+              <CurrentIcon className="w-8 h-8" />
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-2xl font-bold">{weatherData.current.temp}°C</div>
+              <div className="text-sm opacity-90">{weatherData.current.condition}</div>
+            </div>
+            <div className="text-sm space-y-1">
+              <div className="flex items-center gap-2">
+                <Droplets className="w-4 h-4" />
+                <span>{weatherData.current.humidity}%</span>
               </div>
+              <div className="flex items-center gap-2">
+                <Wind className="w-4 h-4" />
+                <span>{weatherData.current.windSpeed} km/h</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-between pt-2 border-t border-white/20">
+            {weatherData.forecast.map((day) => {
+              const DayIcon = getWeatherIcon(day.condition);
+              return (
+                <div key={day.day} className="text-center">
+                  <div className="text-xs opacity-90">{day.day}</div>
+                  <DayIcon className="w-5 h-5 mx-auto my-1" />
+                  <div className="text-sm font-medium">{day.temp}°</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </Card>
+
+      {/* Weather Alerts Section */}
+      {alerts.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-destructive" />
+              Weather Alerts ({alerts.length})
+            </h4>
+            {alerts.length > 2 && (
+              <button
+                onClick={() => setShowAllAlerts(!showAllAlerts)}
+                className="text-xs text-primary hover:underline"
+              >
+                {showAllAlerts ? 'Show less' : `Show all (${alerts.length})`}
+              </button>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="p-1 hover:bg-white/20 rounded-full transition-colors"
-            >
-              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-            </button>
-            <CurrentIcon className="w-8 h-8" />
-          </div>
-        </div>
-        
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-2xl font-bold">{weatherData.current.temp}°C</div>
-            <div className="text-sm opacity-90">{weatherData.current.condition}</div>
-          </div>
-          <div className="text-sm space-y-1">
-            <div className="flex items-center gap-2">
-              <Droplets className="w-4 h-4" />
-              <span>{weatherData.current.humidity}%</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Wind className="w-4 h-4" />
-              <span>{weatherData.current.windSpeed} km/h</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex justify-between pt-2 border-t border-white/20">
-          {weatherData.forecast.map((day) => {
-            const DayIcon = getWeatherIcon(day.condition);
+          
+          {displayedAlerts.map((alert, index) => {
+            const AlertIcon = getAlertIcon(alert.icon);
             return (
-              <div key={day.day} className="text-center">
-                <div className="text-xs opacity-90">{day.day}</div>
-                <DayIcon className="w-5 h-5 mx-auto my-1" />
-                <div className="text-sm font-medium">{day.temp}°</div>
-              </div>
+              <Alert 
+                key={index} 
+                className={`${getAlertStyles(alert.severity)} border transition-all`}
+              >
+                <AlertIcon className="h-4 w-4" />
+                <AlertTitle className="text-sm font-semibold">{alert.title}</AlertTitle>
+                <AlertDescription className="text-xs opacity-90 mt-1">
+                  {alert.description}
+                </AlertDescription>
+              </Alert>
             );
           })}
         </div>
-      </div>
-    </Card>
+      )}
+    </div>
   );
 };
