@@ -237,43 +237,64 @@ export const CropScanner: React.FC = () => {
       return;
     }
 
+    // Check if Web Speech API is supported
+    if (!('speechSynthesis' in window)) {
+      toast.error('Speech synthesis not supported in this browser');
+      return;
+    }
+
     setIsLoadingAudio(true);
     
     try {
       const useHindi = language === 'hi' || language === 'mr' || language === 'pa';
       
-      const { data, error } = await supabase.functions.invoke('text-to-speech', {
-        body: { text, language: useHindi ? 'hi' : 'en' }
-      });
-
-      if (error) throw error;
-
-      if (data?.audioContent) {
-        const audioUrl = `data:audio/mpeg;base64,${data.audioContent}`;
-        const audio = new Audio(audioUrl);
-        audioRef.current = audio;
-        
-        audio.onended = () => {
-          setIsPlaying(false);
-        };
-        
-        audio.onerror = () => {
-          setIsPlaying(false);
-          toast.error('Failed to play audio');
-        };
-        
-        await audio.play();
-        setIsPlaying(true);
+      // Cancel any ongoing speech
+      window.speechSynthesis.cancel();
+      
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = useHindi ? 'hi-IN' : 'en-US';
+      utterance.rate = 0.9;
+      utterance.pitch = 1;
+      
+      // Try to find a suitable voice
+      const voices = window.speechSynthesis.getVoices();
+      const langCode = useHindi ? 'hi' : 'en';
+      const preferredVoice = voices.find(v => v.lang.startsWith(langCode));
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
       }
+      
+      utterance.onstart = () => {
+        setIsPlaying(true);
+        setIsLoadingAudio(false);
+      };
+      
+      utterance.onend = () => {
+        setIsPlaying(false);
+      };
+      
+      utterance.onerror = (event) => {
+        console.error('Speech error:', event);
+        setIsPlaying(false);
+        setIsLoadingAudio(false);
+        toast.error('Failed to play speech');
+      };
+      
+      window.speechSynthesis.speak(utterance);
+      
     } catch (error) {
       console.error('TTS error:', error);
       toast.error('Failed to generate speech');
-    } finally {
       setIsLoadingAudio(false);
     }
   };
 
   const stopAudio = () => {
+    // Stop Web Speech API
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    // Also stop any audio element if present
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
