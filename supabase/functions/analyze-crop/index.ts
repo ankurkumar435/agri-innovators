@@ -40,11 +40,20 @@ Your response must be a valid JSON object with the following structure:
   "diseaseHindi": "Disease name in Hindi (e.g., पत्ती अंगमारी, स्वस्थ फसल)",
   "confidence": "High/Medium/Low",
   "severity": "Healthy/Mild/Moderate/Severe",
-  "treatment": "Detailed treatment recommendations in English",
-  "treatmentHindi": "Treatment recommendations in Hindi",
-  "prevention": "Prevention measures for future in English",
-  "preventionHindi": "Prevention measures in Hindi"
+  "treatment": "Detailed treatment recommendations in English - clear numbered steps",
+  "treatmentHindi": "Treatment recommendations in Hindi - clear numbered steps",
+  "prevention": "Prevention measures for future in English - clear numbered steps",
+  "preventionHindi": "Prevention measures in Hindi - clear numbered steps",
+  "ttsTextEnglish": "A natural, conversational summary for text-to-speech in English. Start with plant identification, then health status, then key recommendations. Use clear sentences without abbreviations. Example: 'This is a tomato plant. The plant appears healthy with no visible diseases. To maintain good health, ensure regular watering and proper sunlight.'",
+  "ttsTextHindi": "A natural, conversational summary for text-to-speech in Hindi. Same structure as English. Example: 'यह टमाटर का पौधा है। पौधा स्वस्थ दिखाई दे रहा है। अच्छे स्वास्थ्य के लिए नियमित पानी और उचित धूप सुनिश्चित करें।'"
 }
+
+IMPORTANT for TTS text:
+- Write in a natural speaking style, as if explaining to a farmer
+- Avoid technical jargon, use simple words
+- Use complete sentences, no bullet points or numbers in TTS fields
+- Keep it concise but informative (3-5 sentences)
+- Don't use abbreviations like "N/A" - spell things out
 
 Be specific and accurate in identifying the plant species. If you cannot identify the plant clearly, provide your best guess with lower confidence. If the image is not of a plant or crop, state that clearly.`;
 
@@ -111,7 +120,7 @@ Be specific and accurate in identifying the plant species. If you cannot identif
       if (jsonMatch) {
         analysis = JSON.parse(jsonMatch[0]);
       } else {
-        // Fallback if AI doesn't return proper JSON
+      // Fallback if AI doesn't return proper JSON
         analysis = {
           plantNameEnglish: "Unknown Plant",
           plantNameHindi: "अज्ञात पौधा",
@@ -123,7 +132,9 @@ Be specific and accurate in identifying the plant species. If you cannot identif
           treatment: aiResponse || "Unable to analyze the image. Please ensure it's a clear photo of a crop.",
           treatmentHindi: "छवि का विश्लेषण करने में असमर्थ। कृपया सुनिश्चित करें कि यह फसल की एक स्पष्ट तस्वीर है।",
           prevention: "Take clear, well-lit photos of affected plant parts for better analysis.",
-          preventionHindi: "बेहतर विश्लेषण के लिए प्रभावित पौधे के हिस्सों की स्पष्ट, अच्छी रोशनी वाली तस्वीरें लें।"
+          preventionHindi: "बेहतर विश्लेषण के लिए प्रभावित पौधे के हिस्सों की स्पष्ट, अच्छी रोशनी वाली तस्वीरें लें।",
+          ttsTextEnglish: "I could not identify this plant clearly. Please try again with a clearer photo showing the plant leaves and any affected areas.",
+          ttsTextHindi: "मैं इस पौधे को स्पष्ट रूप से पहचान नहीं पाया। कृपया पत्तियों और प्रभावित क्षेत्रों को दिखाते हुए एक स्पष्ट फोटो के साथ पुनः प्रयास करें।"
         };
       }
     } catch (parseError) {
@@ -139,7 +150,9 @@ Be specific and accurate in identifying the plant species. If you cannot identif
         treatment: "The analysis could not be completed. Please try again with a clearer image.",
         treatmentHindi: "विश्लेषण पूरा नहीं हो सका। कृपया एक स्पष्ट छवि के साथ पुनः प्रयास करें।",
         prevention: "Ensure good lighting and focus on the affected area.",
-        preventionHindi: "अच्छी रोशनी सुनिश्चित करें और प्रभावित क्षेत्र पर ध्यान दें।"
+        preventionHindi: "अच्छी रोशनी सुनिश्चित करें और प्रभावित क्षेत्र पर ध्यान दें।",
+        ttsTextEnglish: "Sorry, the analysis could not be completed. Please try again with a clearer image of your crop.",
+        ttsTextHindi: "क्षमा करें, विश्लेषण पूरा नहीं हो सका। कृपया अपनी फसल की एक स्पष्ट छवि के साथ पुनः प्रयास करें।"
       };
     }
 

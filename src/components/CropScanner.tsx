@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Upload, X, Loader2, AlertCircle, CheckCircle, Leaf } from 'lucide-react';
+import { Camera, Upload, X, Loader2, AlertCircle, CheckCircle, Leaf, Volume2, VolumeX, Square } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface DiseaseResult {
   plantNameEnglish: string;
@@ -17,15 +18,21 @@ interface DiseaseResult {
   treatmentHindi: string;
   prevention: string;
   preventionHindi: string;
+  ttsTextEnglish?: string;
+  ttsTextHindi?: string;
 }
 
 export const CropScanner: React.FC = () => {
+  const { language } = useLanguage();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<DiseaseResult | null>(null);
   const [showCamera, setShowCamera] = useState(false);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -191,8 +198,95 @@ export const CropScanner: React.FC = () => {
     setImagePreview(null);
     setResult(null);
     stopCamera();
+    stopAudio();
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const getTTSText = () => {
+    if (!result) return '';
+    
+    // Use Hindi TTS for Hindi, Marathi, or Punjabi; otherwise English
+    const useHindi = language === 'hi' || language === 'mr' || language === 'pa';
+    
+    if (useHindi && result.ttsTextHindi) {
+      return result.ttsTextHindi;
+    }
+    if (result.ttsTextEnglish) {
+      return result.ttsTextEnglish;
+    }
+    
+    // Fallback: Generate TTS-friendly text from other fields
+    const plantName = useHindi ? result.plantNameHindi : result.plantNameEnglish;
+    const disease = useHindi ? result.diseaseHindi : result.disease;
+    const treatment = useHindi ? result.treatmentHindi : result.treatment;
+    
+    if (useHindi) {
+      return `यह ${plantName} है। स्थिति: ${disease}। गंभीरता: ${result.severity}। उपचार: ${treatment}`;
+    }
+    return `This is ${plantName}. Condition: ${disease}. Severity: ${result.severity}. Treatment: ${treatment}`;
+  };
+
+  const playAudio = async () => {
+    if (!result) return;
+    
+    const text = getTTSText();
+    if (!text) {
+      toast.error('No text available for speech');
+      return;
+    }
+
+    setIsLoadingAudio(true);
+    
+    try {
+      const useHindi = language === 'hi' || language === 'mr' || language === 'pa';
+      
+      const { data, error } = await supabase.functions.invoke('text-to-speech', {
+        body: { text, language: useHindi ? 'hi' : 'en' }
+      });
+
+      if (error) throw error;
+
+      if (data?.audioContent) {
+        const audioUrl = `data:audio/mpeg;base64,${data.audioContent}`;
+        const audio = new Audio(audioUrl);
+        audioRef.current = audio;
+        
+        audio.onended = () => {
+          setIsPlaying(false);
+        };
+        
+        audio.onerror = () => {
+          setIsPlaying(false);
+          toast.error('Failed to play audio');
+        };
+        
+        await audio.play();
+        setIsPlaying(true);
+      }
+    } catch (error) {
+      console.error('TTS error:', error);
+      toast.error('Failed to generate speech');
+    } finally {
+      setIsLoadingAudio(false);
+    }
+  };
+
+  const stopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+    setIsPlaying(false);
+  };
+
+  const toggleAudio = () => {
+    if (isPlaying) {
+      stopAudio();
+    } else {
+      playAudio();
     }
   };
 
@@ -201,6 +295,7 @@ export const CropScanner: React.FC = () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
+      stopAudio();
     };
   }, []);
 
@@ -337,6 +432,45 @@ export const CropScanner: React.FC = () => {
 
           {result && (
             <div className="space-y-4">
+              {/* Listen Button - TTS */}
+              <Card className="p-4 bg-gradient-to-r from-accent/20 to-accent/10 border-accent/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-foreground">
+                      {language === 'hi' || language === 'mr' || language === 'pa' 
+                        ? 'विश्लेषण सुनें' 
+                        : 'Listen to Analysis'}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      {language === 'hi' || language === 'mr' || language === 'pa'
+                        ? 'AI द्वारा पढ़ा गया सारांश'
+                        : 'AI-read summary of findings'}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={toggleAudio}
+                    disabled={isLoadingAudio}
+                    variant={isPlaying ? "destructive" : "default"}
+                    size="lg"
+                    className="min-w-[120px]"
+                  >
+                    {isLoadingAudio ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : isPlaying ? (
+                      <>
+                        <Square className="w-4 h-4 mr-2" />
+                        Stop
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 className="w-5 h-5 mr-2" />
+                        Listen
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </Card>
+
               {/* Plant Identification Card */}
               <Card className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
                 <div className="flex items-start gap-3">
@@ -411,13 +545,30 @@ export const CropScanner: React.FC = () => {
                   )}
                 </div>
 
-                <Button 
-                  onClick={reset}
-                  variant="outline"
-                  className="w-full"
-                >
-                  Scan Another Crop
-                </Button>
+                <div className="flex gap-3 pt-2">
+                  <Button 
+                    onClick={toggleAudio}
+                    disabled={isLoadingAudio}
+                    variant="secondary"
+                    className="flex-1"
+                  >
+                    {isLoadingAudio ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : isPlaying ? (
+                      <VolumeX className="w-4 h-4 mr-2" />
+                    ) : (
+                      <Volume2 className="w-4 h-4 mr-2" />
+                    )}
+                    {isPlaying ? 'Stop' : 'Listen'}
+                  </Button>
+                  <Button 
+                    onClick={reset}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Scan Another
+                  </Button>
+                </div>
               </Card>
             </div>
           )}
