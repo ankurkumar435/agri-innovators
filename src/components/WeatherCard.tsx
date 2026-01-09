@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Cloud, CloudRain, Sun, Droplets, Wind, CloudSnow, CloudDrizzle, MapPin, RefreshCw, AlertTriangle, Thermometer, Snowflake, CloudLightning, CloudFog } from 'lucide-react';
+import { Cloud, CloudRain, Sun, Droplets, Wind, CloudSnow, CloudDrizzle, MapPin, RefreshCw, AlertTriangle, Thermometer, Snowflake, CloudLightning, CloudFog, Database } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useOfflineCache, getCacheAge } from '@/hooks/useOfflineCache';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 interface WeatherAlert {
   type: 'warning' | 'watch' | 'advisory';
@@ -46,6 +48,8 @@ export const WeatherCard: React.FC = () => {
   const [showAllAlerts, setShowAllAlerts] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { isOnline } = useOnlineStatus();
+  const { cachedData, isFromCache, saveToCache } = useOfflineCache<WeatherData>('weather_data', { expirationMinutes: 60 });
 
   // Get weather icon component based on condition
   const getWeatherIcon = (condition: string) => {
@@ -101,6 +105,22 @@ export const WeatherCard: React.FC = () => {
   };
 
   const fetchWeatherForLocation = useCallback(async (lat: number, lon: number, locationText?: string) => {
+    // If offline, use cached data
+    if (!isOnline) {
+      if (cachedData) {
+        setWeatherData(cachedData);
+        setCurrentCoords({ lat, lon });
+        if (cachedData.location) {
+          setLocationName(`${cachedData.location.name}, ${cachedData.location.country}`);
+        }
+        toast({
+          title: 'Using cached weather data',
+          description: `Last updated: ${getCacheAge('weather_data') || 'recently'}`,
+        });
+      }
+      return;
+    }
+
     try {
       console.log('Fetching weather for:', { lat, lon });
       const { data, error } = await supabase.functions.invoke('weather', {
@@ -114,6 +134,7 @@ export const WeatherCard: React.FC = () => {
 
       if (data) {
         setWeatherData(data);
+        saveToCache(data); // Cache the weather data
         setCurrentCoords({ lat, lon });
         if (data.location) {
           setLocationName(`${data.location.name}, ${data.location.country}`);
@@ -137,13 +158,22 @@ export const WeatherCard: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fetching weather:', error);
-      toast({
-        title: 'Weather Unavailable',
-        description: 'Unable to fetch weather data. Please try again later.',
-        variant: 'destructive',
-      });
+      // Try to use cached data on error
+      if (cachedData) {
+        setWeatherData(cachedData);
+        toast({
+          title: 'Using cached weather data',
+          description: 'Network error. Showing last known weather.',
+        });
+      } else {
+        toast({
+          title: 'Weather Unavailable',
+          description: 'Unable to fetch weather data. Please try again later.',
+          variant: 'destructive',
+        });
+      }
     }
-  }, [toast]);
+  }, [toast, isOnline, cachedData, saveToCache]);
 
   const fetchWeatherData = useCallback(async () => {
     try {
@@ -388,12 +418,18 @@ export const WeatherCard: React.FC = () => {
                   <span>{locationName}</span>
                 </div>
               )}
+              {isFromCache && (
+                <div className="flex items-center gap-1 text-xs opacity-75 mt-1">
+                  <Database className="w-3 h-3" />
+                  <span>Cached: {getCacheAge('weather_data')}</span>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <button 
                 onClick={handleRefresh}
-                disabled={refreshing}
-                className="p-1 hover:bg-white/20 rounded-full transition-colors"
+                disabled={refreshing || !isOnline}
+                className="p-1 hover:bg-white/20 rounded-full transition-colors disabled:opacity-50"
               >
                 <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
               </button>
