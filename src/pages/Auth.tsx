@@ -150,19 +150,43 @@ const Auth = () => {
       if (error) throw error;
 
       if (data.user) {
-        // Create profile with phone number
-        const { error: profileError } = await supabase
+        // Create profile with phone number - first check if profile exists
+        const { data: existingProfile } = await supabase
           .from('profiles')
-          .upsert({
-            user_id: data.user.id,
-            farmer_name: `${signUpData.firstName} ${signUpData.lastName}`,
-            farm_name: signUpData.farmName,
-            phone: signUpData.phone,
-            location: location
-          }, { onConflict: 'user_id' });
+          .select('id')
+          .eq('user_id', data.user.id)
+          .single();
 
-        if (profileError) {
-          console.error('Error saving profile:', profileError);
+        if (existingProfile) {
+          // Update existing profile
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({
+              farmer_name: `${signUpData.firstName} ${signUpData.lastName}`,
+              farm_name: signUpData.farmName,
+              phone: signUpData.phone,
+              location: location
+            })
+            .eq('user_id', data.user.id);
+
+          if (updateError) {
+            console.error('Error updating profile:', updateError);
+          }
+        } else {
+          // Insert new profile
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              user_id: data.user.id,
+              farmer_name: `${signUpData.firstName} ${signUpData.lastName}`,
+              farm_name: signUpData.farmName,
+              phone: signUpData.phone,
+              location: location
+            });
+
+          if (insertError) {
+            console.error('Error creating profile:', insertError);
+          }
         }
 
         // Store location data if available
