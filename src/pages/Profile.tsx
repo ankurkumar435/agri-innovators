@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import NotificationSettings from '@/components/NotificationSettings';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -465,6 +466,9 @@ const Profile = () => {
             </Select>
           </div>
         </Card>
+
+        {/* Notification Settings */}
+        <NotificationSettings />
 
         {/* Settings Options */}
         <div className="space-y-3">
