@@ -1,18 +1,37 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { Lightbulb, Bug, Mountain, Cpu, MessageCircle } from 'lucide-react';
 import { UserHeader } from '@/components/UserHeader';
 import { QuickActionCard } from '@/components/QuickActionCard';
-import { WeatherCard } from '@/components/WeatherCard';
 import { FarmerTripCard } from '@/components/FarmerTripCard';
-import { SoilConditionsModal } from '@/components/SoilConditionsModal';
-import { CropAdvisoryModal } from '@/components/CropAdvisoryModal';
-import { AIRecommendationsModal } from '@/components/AIRecommendationsModal';
 import { BottomNavigation } from '@/components/BottomNavigation';
-import { ContentSection } from '@/components/ContentSection';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocationTracker } from '@/hooks/useLocationTracker';
 import { useNavigate } from 'react-router-dom';
 import farmHero from '@/assets/farm-hero.jpg';
+
+// Lazy load heavy components
+const WeatherCard = lazy(() => import('@/components/WeatherCard').then(m => ({ default: m.WeatherCard })));
+const ContentSection = lazy(() => import('@/components/ContentSection').then(m => ({ default: m.ContentSection })));
+const SoilConditionsModal = lazy(() => import('@/components/SoilConditionsModal').then(m => ({ default: m.SoilConditionsModal })));
+const CropAdvisoryModal = lazy(() => import('@/components/CropAdvisoryModal').then(m => ({ default: m.CropAdvisoryModal })));
+const AIRecommendationsModal = lazy(() => import('@/components/AIRecommendationsModal').then(m => ({ default: m.AIRecommendationsModal })));
+
+// Loading skeleton for weather card
+const WeatherSkeleton = () => (
+  <div className="p-4 bg-gradient-sky rounded-xl text-white animate-pulse">
+    <div className="h-6 bg-white/20 rounded mb-2 w-32"></div>
+    <div className="h-4 bg-white/20 rounded mb-4 w-24"></div>
+    <div className="h-10 bg-white/20 rounded w-20"></div>
+  </div>
+);
+
+// Loading skeleton for content
+const ContentSkeleton = () => (
+  <div className="p-4 animate-pulse space-y-4">
+    <div className="h-8 bg-muted rounded w-40"></div>
+    <div className="h-32 bg-muted rounded"></div>
+  </div>
+);
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('home');
@@ -133,10 +152,12 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Weather Forecast */}
+          {/* Weather Forecast - Lazy Loaded */}
           <div>
             <h2 className="text-lg font-semibold text-foreground mb-3">Weather Forecast</h2>
-            <WeatherCard />
+            <Suspense fallback={<WeatherSkeleton />}>
+              <WeatherCard />
+            </Suspense>
           </div>
 
           {/* Today's Farmer Trips */}
@@ -171,15 +192,30 @@ const Index = () => {
         </div>
       ) : (
         <div className="p-4">
-          <ContentSection activeTab={activeTab} />
+          <Suspense fallback={<ContentSkeleton />}>
+            <ContentSection activeTab={activeTab} />
+          </Suspense>
         </div>
       )}
 
       <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
       
-      <SoilConditionsModal isOpen={showSoilModal} onClose={() => setShowSoilModal(false)} />
-      <CropAdvisoryModal isOpen={showCropAdvisory} onClose={() => setShowCropAdvisory(false)} />
-      <AIRecommendationsModal isOpen={showAIRecommendations} onClose={() => setShowAIRecommendations(false)} />
+      {/* Lazy load modals - only when opened */}
+      {showSoilModal && (
+        <Suspense fallback={null}>
+          <SoilConditionsModal isOpen={showSoilModal} onClose={() => setShowSoilModal(false)} />
+        </Suspense>
+      )}
+      {showCropAdvisory && (
+        <Suspense fallback={null}>
+          <CropAdvisoryModal isOpen={showCropAdvisory} onClose={() => setShowCropAdvisory(false)} />
+        </Suspense>
+      )}
+      {showAIRecommendations && (
+        <Suspense fallback={null}>
+          <AIRecommendationsModal isOpen={showAIRecommendations} onClose={() => setShowAIRecommendations(false)} />
+        </Suspense>
+      )}
     </div>
   );
 };
