@@ -191,90 +191,9 @@ serve(async (req) => {
       throw new Error('Latitude and longitude are required');
     }
 
-    const rapidApiKey = Deno.env.get('RAPIDAPI_KEY');
-
     console.log('Fetching weather for coordinates:', { lat, lon });
 
-    // 1) Try RapidAPI (WeatherAPI.com)
-    if (rapidApiKey) {
-      const rapidRes = await fetch(
-        `https://weatherapi-com.p.rapidapi.com/forecast.json?q=${lat},${lon}&days=4&alerts=yes`,
-        {
-          method: 'GET',
-          headers: {
-            'X-RapidAPI-Key': rapidApiKey,
-            'X-RapidAPI-Host': 'weatherapi-com.p.rapidapi.com',
-          },
-        }
-      );
-
-      if (rapidRes.ok) {
-        const weatherData = await rapidRes.json();
-
-        const dailyForecasts = weatherData.forecast.forecastday.map(
-          (day: any, index: number) => {
-            const date = new Date(day.date);
-            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            return {
-              day: index === 0 ? 'Today' : dayNames[date.getDay()],
-              temp: Math.round(day.day.avgtemp_c),
-              condition: day.day.condition.text,
-              icon: day.day.condition.icon,
-            };
-          }
-        );
-
-        // Generate alerts based on current conditions
-        const alerts = generateWeatherAlerts(
-          0, // WeatherAPI uses text conditions, we'll check temp/wind
-          Math.round(weatherData.current.temp_c),
-          Math.round(weatherData.current.wind_kph),
-          weatherData.current.humidity
-        );
-
-        // Add API-provided alerts if available
-        if (weatherData.alerts?.alert?.length > 0) {
-          weatherData.alerts.alert.forEach((alert: any) => {
-            alerts.push({
-              type: 'warning',
-              severity: alert.severity?.toLowerCase() || 'moderate',
-              title: alert.headline || alert.event,
-              description: alert.desc || alert.instruction || '',
-              icon: 'alert',
-            });
-          });
-        }
-
-        const response = {
-          current: {
-            temp: Math.round(weatherData.current.temp_c),
-            condition: weatherData.current.condition.text,
-            humidity: weatherData.current.humidity,
-            windSpeed: Math.round(weatherData.current.wind_kph),
-            icon: weatherData.current.condition.icon,
-            main: weatherData.current.condition.text,
-          },
-          forecast: dailyForecasts,
-          location: {
-            name: weatherData.location.name,
-            region: weatherData.location.region,
-            country: weatherData.location.country,
-          },
-          alerts,
-        };
-
-        return new Response(JSON.stringify(response), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      } else {
-        const errorText = await rapidRes.text();
-        console.error('Weather API error:', rapidRes.status, errorText);
-      }
-    } else {
-      console.warn('RAPIDAPI_KEY not set, falling back to Open-Meteo');
-    }
-
-    // 2) Fallback to Open-Meteo (no key required)
+    // Always use Open-Meteo (free, no API key required, reliable)
     const params = new URLSearchParams({
       latitude: String(lat),
       longitude: String(lon),
@@ -318,6 +237,25 @@ serve(async (req) => {
     // Generate weather alerts based on current conditions
     const alerts = generateWeatherAlerts(nowCode, currentTemp, currentWindSpeed, currentHumidity);
 
+    // Try to get location name via reverse geocoding (optional enhancement)
+    let locationName = `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+    try {
+      const geoRes = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
+        { headers: { 'User-Agent': 'AgriInnovators/1.0' } }
+      );
+      if (geoRes.ok) {
+        const geoData = await geoRes.json();
+        locationName = geoData.address?.city || 
+                       geoData.address?.town || 
+                       geoData.address?.village || 
+                       geoData.address?.county ||
+                       locationName;
+      }
+    } catch (geoError) {
+      console.log('Geocoding failed, using coordinates as location name');
+    }
+
     const response = {
       current: {
         temp: currentTemp,
@@ -328,8 +266,13 @@ serve(async (req) => {
         main: nowCondition,
       },
       forecast: dailyForecasts,
+      location: {
+        name: locationName,
+      },
       alerts,
     };
+
+    console.log('Weather data fetched successfully for:', locationName);
 
     return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
