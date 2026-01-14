@@ -1,9 +1,20 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { User } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { ChatBot } from '@/components/ChatBot';
-import { CropScanner } from '@/components/CropScanner';
-import { MarketHub } from '@/components/MarketHub';
+
+// Lazy load heavy tab components
+const ChatBot = lazy(() => import('@/components/ChatBot').then(m => ({ default: m.ChatBot })));
+const CropScanner = lazy(() => import('@/components/CropScanner').then(m => ({ default: m.CropScanner })));
+const MarketHub = lazy(() => import('@/components/MarketHub').then(m => ({ default: m.MarketHub })));
+
+// Loading skeleton
+const TabSkeleton = () => (
+  <div className="animate-pulse space-y-4">
+    <div className="h-8 bg-muted rounded w-40"></div>
+    <div className="h-48 bg-muted rounded"></div>
+    <div className="h-32 bg-muted rounded"></div>
+  </div>
+);
 
 interface ContentSectionProps {
   activeTab: string;
@@ -13,13 +24,25 @@ export const ContentSection: React.FC<ContentSectionProps> = ({ activeTab }) => 
   const getContent = () => {
     switch (activeTab) {
       case 'market':
-        return <MarketHub />;
+        return (
+          <Suspense fallback={<TabSkeleton />}>
+            <MarketHub />
+          </Suspense>
+        );
 
       case 'scan':
-        return <CropScanner />;
+        return (
+          <Suspense fallback={<TabSkeleton />}>
+            <CropScanner />
+          </Suspense>
+        );
 
       case 'ai-bot':
-        return <ChatBot />;
+        return (
+          <Suspense fallback={<TabSkeleton />}>
+            <ChatBot />
+          </Suspense>
+        );
 
       case 'profile':
         return (
