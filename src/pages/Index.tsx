@@ -4,26 +4,17 @@ import { UserHeader } from '@/components/UserHeader';
 import { QuickActionCard } from '@/components/QuickActionCard';
 import { FarmerTripCard } from '@/components/FarmerTripCard';
 import { BottomNavigation } from '@/components/BottomNavigation';
+import { WeatherCard } from '@/components/WeatherCard';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocationTracker } from '@/hooks/useLocationTracker';
 import { useNavigate } from 'react-router-dom';
 import farmHero from '@/assets/farm-hero.jpg';
 
-// Lazy load heavy components
-const WeatherCard = lazy(() => import('@/components/WeatherCard').then(m => ({ default: m.WeatherCard })));
+// Lazy load heavy components (modals and tabs only)
 const ContentSection = lazy(() => import('@/components/ContentSection').then(m => ({ default: m.ContentSection })));
 const SoilConditionsModal = lazy(() => import('@/components/SoilConditionsModal').then(m => ({ default: m.SoilConditionsModal })));
 const CropAdvisoryModal = lazy(() => import('@/components/CropAdvisoryModal').then(m => ({ default: m.CropAdvisoryModal })));
 const AIRecommendationsModal = lazy(() => import('@/components/AIRecommendationsModal').then(m => ({ default: m.AIRecommendationsModal })));
-
-// Loading skeleton for weather card
-const WeatherSkeleton = () => (
-  <div className="p-4 bg-gradient-sky rounded-xl text-white animate-pulse">
-    <div className="h-6 bg-white/20 rounded mb-2 w-32"></div>
-    <div className="h-4 bg-white/20 rounded mb-4 w-24"></div>
-    <div className="h-10 bg-white/20 rounded w-20"></div>
-  </div>
-);
 
 // Loading skeleton for content
 const ContentSkeleton = () => (
@@ -152,12 +143,10 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Weather Forecast - Lazy Loaded */}
+          {/* Weather Forecast */}
           <div>
             <h2 className="text-lg font-semibold text-foreground mb-3">Weather Forecast</h2>
-            <Suspense fallback={<WeatherSkeleton />}>
-              <WeatherCard />
-            </Suspense>
+            <WeatherCard />
           </div>
 
           {/* Today's Farmer Trips */}
