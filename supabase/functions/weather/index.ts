@@ -199,7 +199,7 @@ serve(async (req) => {
       longitude: String(lon),
       current: 'temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m',
       daily: 'weather_code,temperature_2m_max,temperature_2m_min',
-      forecast_days: '4',
+      forecast_days: '7',
       timezone: 'auto',
     });
 
