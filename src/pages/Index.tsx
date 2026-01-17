@@ -1,8 +1,9 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { Lightbulb, Bug, Mountain, Cpu, MessageCircle } from 'lucide-react';
+import { Lightbulb, Bug, Mountain, Cpu } from 'lucide-react';
 import { UserHeader } from '@/components/UserHeader';
 import { QuickActionCard } from '@/components/QuickActionCard';
 import { FarmerTripCard } from '@/components/FarmerTripCard';
+import { FarmerTipsCard } from '@/components/FarmerTipsCard';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { WeatherCard } from '@/components/WeatherCard';
 import { useAuth } from '@/hooks/useAuth';
@@ -166,17 +167,10 @@ const Index = () => {
             </div>
           </div>
 
-
           {/* Farming Tips */}
-          <div className="bg-gradient-earth text-white p-4 rounded-2xl">
-            <div className="flex items-center gap-2 mb-3">
-              <MessageCircle className="w-5 h-5" />
-              <h3 className="font-semibold">Today's Tip</h3>
-            </div>
-            <p className="text-sm opacity-90 leading-relaxed">
-              Monitor your crops closely during this season. The current weather conditions are ideal for rapid growth, 
-              but also watch for potential pest activity in warm, humid conditions.
-            </p>
+          <div>
+            <h2 className="text-lg font-semibold text-foreground mb-3">Farmer Tips</h2>
+            <FarmerTipsCard />
           </div>
         </div>
       ) : (
