@@ -107,16 +107,22 @@ export const WeatherCard: React.FC = () => {
   const fetchWeatherForLocation = useCallback(async (lat: number, lon: number, locationText?: string) => {
     // If offline, use cached data
     if (!isOnline) {
-      if (cachedData) {
-        setWeatherData(cachedData);
-        setCurrentCoords({ lat, lon });
-        if (cachedData.location) {
-          setLocationName(`${cachedData.location.name}, ${cachedData.location.country}`);
+      const cached = localStorage.getItem('farmsmart_cache_weather_data');
+      if (cached) {
+        try {
+          const parsedCached = JSON.parse(cached);
+          setWeatherData(parsedCached);
+          setCurrentCoords({ lat, lon });
+          if (parsedCached.location) {
+            setLocationName(`${parsedCached.location.name}, ${parsedCached.location.country}`);
+          }
+          toast({
+            title: 'Using cached weather data',
+            description: `Last updated: ${getCacheAge('weather_data') || 'recently'}`,
+          });
+        } catch (e) {
+          console.error('Error parsing cached data:', e);
         }
-        toast({
-          title: 'Using cached weather data',
-          description: `Last updated: ${getCacheAge('weather_data') || 'recently'}`,
-        });
       }
       return;
     }
@@ -159,12 +165,18 @@ export const WeatherCard: React.FC = () => {
     } catch (error) {
       console.error('Error fetching weather:', error);
       // Try to use cached data on error
-      if (cachedData) {
-        setWeatherData(cachedData);
-        toast({
-          title: 'Using cached weather data',
-          description: 'Network error. Showing last known weather.',
-        });
+      const cached = localStorage.getItem('farmsmart_cache_weather_data');
+      if (cached) {
+        try {
+          const parsedCached = JSON.parse(cached);
+          setWeatherData(parsedCached);
+          toast({
+            title: 'Using cached weather data',
+            description: 'Network error. Showing last known weather.',
+          });
+        } catch (e) {
+          console.error('Error parsing cached data:', e);
+        }
       } else {
         toast({
           title: 'Weather Unavailable',
@@ -173,7 +185,7 @@ export const WeatherCard: React.FC = () => {
         });
       }
     }
-  }, [toast, isOnline, cachedData, saveToCache]);
+  }, [toast, isOnline, saveToCache]);
 
   const fetchWeatherData = useCallback(async () => {
     try {
@@ -321,10 +333,11 @@ export const WeatherCard: React.FC = () => {
     }
   };
 
-  // Initial fetch
+  // Initial fetch - only run once on mount
   useEffect(() => {
     fetchWeatherData();
-  }, [fetchWeatherData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Subscribe to realtime location changes
   useEffect(() => {
