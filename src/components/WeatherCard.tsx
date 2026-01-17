@@ -469,17 +469,19 @@ export const WeatherCard: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex justify-between pt-2 border-t border-white/20">
-            {weatherData.forecast.map((day) => {
-              const DayIcon = getWeatherIcon(day.condition);
-              return (
-                <div key={day.day} className="text-center">
-                  <div className="text-xs opacity-90">{day.day}</div>
-                  <DayIcon className="w-5 h-5 mx-auto my-1" />
-                  <div className="text-sm font-medium">{day.temp}°</div>
-                </div>
-              );
-            })}
+          <div className="pt-2 border-t border-white/20">
+            <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+              {weatherData.forecast.map((day) => {
+                const DayIcon = getWeatherIcon(day.condition);
+                return (
+                  <div key={day.day} className="text-center flex-shrink-0 min-w-[3rem]">
+                    <div className="text-xs opacity-90 font-medium">{day.day}</div>
+                    <DayIcon className="w-5 h-5 mx-auto my-1" />
+                    <div className="text-sm font-semibold">{day.temp}°</div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </Card>
