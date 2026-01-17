@@ -375,11 +375,13 @@ export const WeatherCard: React.FC = () => {
 
   if (loading) {
     return (
-      <Card className="p-4 bg-gradient-sky border-0 text-white">
-        <div className="animate-pulse">
-          <div className="h-6 bg-white/20 rounded mb-2"></div>
-          <div className="h-4 bg-white/20 rounded mb-4"></div>
-          <div className="h-8 bg-white/20 rounded"></div>
+      <Card className="p-4 bg-gradient-sky border-0 text-white min-h-[180px] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="relative">
+            <div className="w-10 h-10 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+            <Cloud className="w-5 h-5 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-80" />
+          </div>
+          <p className="text-sm opacity-90">Fetching weather data...</p>
         </div>
       </Card>
     );
