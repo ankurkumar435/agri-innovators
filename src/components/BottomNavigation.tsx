@@ -1,19 +1,20 @@
 import React from 'react';
 import { Home, Store, Scan, Bot, User, LucideIcon } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface NavigationItem {
   id: string;
   icon: LucideIcon;
-  label: string;
+  labelKey: string;
   gradient: string;
 }
 
 const navigationItems: NavigationItem[] = [
-  { id: 'home', icon: Home, label: 'Home', gradient: 'from-emerald-500 to-teal-500' },
-  { id: 'market', icon: Store, label: 'Market', gradient: 'from-amber-500 to-orange-500' },
-  { id: 'scan', icon: Scan, label: 'Scan', gradient: 'from-cyan-500 to-blue-500' },
-  { id: 'ai-bot', icon: Bot, label: 'AI Bot', gradient: 'from-violet-500 to-purple-500' },
-  { id: 'profile', icon: User, label: 'Profile', gradient: 'from-rose-500 to-pink-500' },
+  { id: 'home', icon: Home, labelKey: 'home', gradient: 'from-emerald-500 to-teal-500' },
+  { id: 'market', icon: Store, labelKey: 'market', gradient: 'from-amber-500 to-orange-500' },
+  { id: 'scan', icon: Scan, labelKey: 'scan', gradient: 'from-cyan-500 to-blue-500' },
+  { id: 'ai-bot', icon: Bot, labelKey: 'aiBot', gradient: 'from-violet-500 to-purple-500' },
+  { id: 'profile', icon: User, labelKey: 'profile', gradient: 'from-rose-500 to-pink-500' },
 ];
 
 interface BottomNavigationProps {
@@ -25,6 +26,8 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   activeTab, 
   onTabChange 
 }) => {
+  const { t } = useLanguage();
+  
   return (
     <div className="fixed bottom-4 left-4 right-4 z-50">
       <div className="nav-floating max-w-md mx-auto">
@@ -88,7 +91,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                       : 'text-muted-foreground'
                   }`}
                 >
-                  {item.label}
+                  {t(item.labelKey)}
                 </span>
                 
                 {/* Active indicator dot */}

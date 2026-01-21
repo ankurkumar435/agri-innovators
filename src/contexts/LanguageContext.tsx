@@ -54,6 +54,37 @@ const translations = {
     todaysTip: "Today's Tip",
     farmingTip: "Monitor your crops closely during this season. The current weather conditions are ideal for rapid growth, but also watch for potential pest activity in warm, humid conditions.",
     
+    // Market Hub
+    marketHub: "Market Hub",
+    todaysBestPrices: "Today's Best Prices",
+    premiumRice: "Premium Rice",
+    organicWheat: "Organic Wheat",
+    freshCorn: "Fresh Corn",
+    marketInsights: "Market Insights",
+    
+    // Crop Scanner
+    cropScanner: "Crop Scanner",
+    scanYourCrop: "Scan Your Crop",
+    scanDesc: "Point your camera at crops for instant AI-powered analysis",
+    startScanning: "Start Scanning",
+    recentScans: "Recent Scans",
+    tomatoPlant: "Tomato Plant",
+    riceField: "Rice Field",
+    healthy: "Healthy",
+    monitor: "Monitor",
+    
+    // AI Assistant
+    aiAssistant: "AI Assistant",
+    farmBotAI: "FarmBot AI",
+    farmingCompanion: "Your Farming Companion",
+    askAnything: "Hello! I'm FarmBot AI, your farming companion. Ask me anything about crops, weather, pest control, market trends, or any farming-related questions!",
+    quickQuestions: "Quick Questions",
+    bestTimeRice: "What's the best time to plant rice?",
+    preventPests: "How to prevent pest attacks?",
+    currentWeather: "Current weather patterns for farming?",
+    soilHealthTips: "Soil health tips for better yield",
+    askAboutFarming: "Ask me anything about farming...",
+    
     // Auth
     signIn: "Sign In",
     signUp: "Sign Up",
