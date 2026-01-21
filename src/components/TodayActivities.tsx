@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useFarmerActivities, CreateActivityInput } from '@/hooks/useFarmerActivities';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const statusConfig = {
   pending: { 
@@ -26,6 +27,7 @@ const statusConfig = {
 
 export function TodayActivities() {
   const { activities, loading, createActivity, deleteActivity, toggleStatus } = useFarmerActivities();
+  const { t } = useLanguage();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState<CreateActivityInput>({
     title: '',
@@ -67,7 +69,7 @@ export function TodayActivities() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground">Today's Activities</h2>
+        <h2 className="text-lg font-semibold text-foreground">{t('todaysActivities')}</h2>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="gap-1">

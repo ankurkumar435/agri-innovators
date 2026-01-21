@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Message {
   id: string;
@@ -18,10 +19,11 @@ interface Message {
 const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
 export const ChatBot: React.FC = () => {
+  const { t } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: "Hello! I'm FarmBot AI, your farming companion. Ask me anything about crops, weather, pest control, market trends, or any farming-related questions! You can also use voice input by clicking the microphone button.",
+      content: t('askAnything'),
       isBot: true,
       timestamp: new Date(),
     }
@@ -202,10 +204,10 @@ export const ChatBot: React.FC = () => {
   };
 
   const quickQuestions = [
-    "What's the best time to plant rice?",
-    "How to prevent pest attacks?",
-    "Current weather patterns for farming?",
-    "Soil health tips for better yield"
+    t('bestTimeRice'),
+    t('preventPests'),
+    t('currentWeather'),
+    t('soilHealthTips')
   ];
 
   const sendMessage = async (content: string) => {
@@ -290,7 +292,7 @@ export const ChatBot: React.FC = () => {
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-4">
         <Bot className="w-6 h-6 text-primary" />
-        <h2 className="text-xl font-bold text-foreground">AI Assistant</h2>
+        <h2 className="text-xl font-bold text-foreground">{t('aiAssistant')}</h2>
       </div>
 
       {/* Chat Messages */}
@@ -362,7 +364,7 @@ export const ChatBot: React.FC = () => {
 
       {/* Quick Questions */}
       <Card className="p-4">
-        <h3 className="font-semibold mb-3 text-foreground">Quick Questions</h3>
+        <h3 className="font-semibold mb-3 text-foreground">{t('quickQuestions')}</h3>
         <div className="space-y-2">
           {quickQuestions.map((question, index) => (
             <button
@@ -408,7 +410,7 @@ export const ChatBot: React.FC = () => {
           <Input
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            placeholder="Ask me anything about farming..."
+            placeholder={t('askAboutFarming')}
             disabled={isLoading}
             className="flex-1"
           />

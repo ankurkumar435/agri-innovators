@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface PriceHistory {
   date: string;
@@ -68,6 +69,7 @@ export const MarketHub: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const fetchMarketPrices = async (showRefreshToast = false) => {
     try {
@@ -182,7 +184,7 @@ export const MarketHub: React.FC = () => {
       <div className="space-y-4">
         <div className="flex items-center gap-2 mb-4">
           <Store className="w-6 h-6 text-primary" />
-          <h2 className="text-xl font-bold text-foreground">Market Hub</h2>
+          <h2 className="text-xl font-bold text-foreground">{t('marketHub')}</h2>
         </div>
         <Card className="p-8 bg-card border border-border">
           <div className="flex items-center justify-center">
@@ -200,7 +202,7 @@ export const MarketHub: React.FC = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Store className="w-6 h-6 text-primary" />
-          <h2 className="text-xl font-bold text-foreground">Market Hub</h2>
+          <h2 className="text-xl font-bold text-foreground">{t('marketHub')}</h2>
         </div>
         <Button
           variant="ghost"

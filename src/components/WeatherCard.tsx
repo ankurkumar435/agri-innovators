@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useOfflineCache, getCacheAge } from '@/hooks/useOfflineCache';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface WeatherAlert {
   type: 'warning' | 'watch' | 'advisory';
@@ -50,6 +51,7 @@ export const WeatherCard: React.FC = () => {
   const { user } = useAuth();
   const { isOnline } = useOnlineStatus();
   const { cachedData, isFromCache, saveToCache } = useOfflineCache<WeatherData>('weather_data', { expirationMinutes: 60 });
+  const { t } = useLanguage();
 
   // Get weather icon component based on condition
   const getWeatherIcon = (condition: string) => {
@@ -425,8 +427,8 @@ export const WeatherCard: React.FC = () => {
       <Card className="p-4 bg-gradient-sky border-0 text-white">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold">Weather Forecast</h3>
+          <div>
+              <h3 className="text-lg font-semibold">{t('weatherForecast')}</h3>
               {locationName && (
                 <div className="flex items-center gap-1 text-sm opacity-90">
                   <MapPin className="w-3 h-3" />

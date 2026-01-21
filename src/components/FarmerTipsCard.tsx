@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Lightbulb, ChevronLeft, ChevronRight, Droplets, Sun, Wind, Thermometer, Bug, Leaf } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface FarmerTip {
   id: string;
@@ -97,6 +98,7 @@ const allTips: FarmerTip[] = [
 export const FarmerTipsCard: React.FC = () => {
   const [currentTipIndex, setCurrentTipIndex] = useState(0);
   const [displayedTips, setDisplayedTips] = useState<FarmerTip[]>([]);
+  const { t } = useLanguage();
 
   useEffect(() => {
     // Shuffle and select 5 tips for display
@@ -137,7 +139,7 @@ export const FarmerTipsCard: React.FC = () => {
           <div className="p-1.5 bg-white/20 rounded-lg">
             <Lightbulb className="w-4 h-4" />
           </div>
-          <h3 className="font-semibold">Farmer Tips</h3>
+          <h3 className="font-semibold">{t('todaysTip')}</h3>
         </div>
         <div className="flex items-center gap-1">
           <button 

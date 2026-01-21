@@ -9,6 +9,7 @@ import { WeatherCard } from '@/components/WeatherCard';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocationTracker } from '@/hooks/useLocationTracker';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '@/contexts/LanguageContext';
 import farmHero from '@/assets/farm-hero.jpg';
 
 // Lazy load heavy components (modals and tabs only)
@@ -32,6 +33,7 @@ const Index = () => {
   const [showAIRecommendations, setShowAIRecommendations] = useState(false);
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   
   // Start location tracking for live updates
   useLocationTracker();
@@ -60,31 +62,29 @@ const Index = () => {
   const quickActions = [
     {
       icon: Lightbulb,
-      title: 'Crop Advisory',
-      description: 'Expert farming tips and recommendations',
+      title: t('cropAdvisory'),
+      description: t('cropAdvisoryDesc'),
       action: () => setShowCropAdvisory(true)
     },
     {
       icon: Bug,
-      title: 'Pest & Diseases',
-      description: 'Identify and treat crop problems',
+      title: t('pestDiseases'),
+      description: t('pestDiseasesDesc'),
       action: () => setActiveTab('scan')
     },
     {
       icon: Mountain,
-      title: 'Soil Conditions',
-      description: 'Monitor soil health and nutrients',
+      title: t('soilConditions'),
+      description: t('soilConditionsDesc'),
       action: () => setShowSoilModal(true)
     },
     {
       icon: Cpu,
-      title: 'AI Recommendations',
-      description: 'Smart farming suggestions',
+      title: t('aiRecommendations'),
+      description: t('aiRecommendationsDesc'),
       action: () => setShowAIRecommendations(true)
     }
   ];
-
-
   return (
     <div className="min-h-screen bg-background">
       <UserHeader />
@@ -100,14 +100,14 @@ const Index = () => {
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
             <div className="absolute bottom-4 left-4 text-white">
-              <h1 className="text-2xl font-bold mb-1">Smart Farming</h1>
-              <p className="text-sm opacity-90">AI-powered crop recommendations</p>
+              <h1 className="text-2xl font-bold mb-1">{t('smartFarming')}</h1>
+              <p className="text-sm opacity-90">{t('aiPoweredRecommendations')}</p>
             </div>
           </div>
 
           {/* Quick Actions */}
           <div>
-            <h2 className="text-lg font-semibold text-foreground mb-3">Quick Actions</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-3">{t('quickActions')}</h2>
             <div className="grid grid-cols-2 gap-3">
               {quickActions.map((action) => (
                 <QuickActionCard
@@ -123,7 +123,7 @@ const Index = () => {
 
           {/* Weather Forecast */}
           <div>
-            <h2 className="text-lg font-semibold text-foreground mb-3">Weather Forecast</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-3">{t('weatherForecast')}</h2>
             <WeatherCard />
           </div>
 
@@ -132,7 +132,7 @@ const Index = () => {
 
           {/* Farming Tips */}
           <div>
-            <h2 className="text-lg font-semibold text-foreground mb-3">Farmer Tips</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-3">{t('todaysTip')}</h2>
             <FarmerTipsCard />
           </div>
         </div>
