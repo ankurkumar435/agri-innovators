@@ -2,8 +2,8 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { Lightbulb, Bug, Mountain, Cpu } from 'lucide-react';
 import { UserHeader } from '@/components/UserHeader';
 import { QuickActionCard } from '@/components/QuickActionCard';
-import { FarmerTripCard } from '@/components/FarmerTripCard';
 import { FarmerTipsCard } from '@/components/FarmerTipsCard';
+import { TodayActivities } from '@/components/TodayActivities';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { WeatherCard } from '@/components/WeatherCard';
 import { useAuth } from '@/hooks/useAuth';
@@ -84,29 +84,6 @@ const Index = () => {
     }
   ];
 
-  const farmerTrips = [
-    {
-      title: 'Morning Field Inspection',
-      location: 'North Field',
-      time: '6:00 AM',
-      status: 'completed' as const,
-      description: 'Checked rice crop growth and irrigation needs'
-    },
-    {
-      title: 'Fertilizer Application',
-      location: 'South Field',
-      time: '10:00 AM',
-      status: 'active' as const,
-      description: 'Applying organic fertilizer to wheat crops'
-    },
-    {
-      title: 'Market Visit',
-      location: 'Local Market',
-      time: '2:00 PM',
-      status: 'pending' as const,
-      description: 'Check current market prices for harvest planning'
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -150,22 +127,8 @@ const Index = () => {
             <WeatherCard />
           </div>
 
-          {/* Today's Farmer Trips */}
-          <div>
-            <h2 className="text-lg font-semibold text-foreground mb-3">Today's Activities</h2>
-            <div className="space-y-3">
-              {farmerTrips.map((trip, index) => (
-                <FarmerTripCard
-                  key={index}
-                  title={trip.title}
-                  location={trip.location}
-                  time={trip.time}
-                  status={trip.status}
-                  description={trip.description}
-                />
-              ))}
-            </div>
-          </div>
+          {/* Today's Activities */}
+          <TodayActivities />
 
           {/* Farming Tips */}
           <div>
