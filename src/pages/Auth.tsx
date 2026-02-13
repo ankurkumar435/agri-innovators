@@ -21,7 +21,8 @@ const Auth = () => {
   const [showOtp, setShowOtp] = useState(false);
   const [otpValue, setOtpValue] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
-  
+  const [resendCooldown, setResendCooldown] = useState(0);
+
   const [signUpData, setSignUpData] = useState({
     firstName: '',
     lastName: '',
@@ -41,6 +42,13 @@ const Auth = () => {
       navigate('/');
     }
   }, [user, navigate]);
+
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -102,7 +110,7 @@ const Auth = () => {
         // Store signup email for OTP verification
         setSignupEmail(signUpData.email);
         setShowOtp(true);
-
+        setResendCooldown(60);
         // Create/update profile
         const { data: existingProfile } = await supabase
           .from('profiles')
@@ -247,12 +255,25 @@ const Auth = () => {
                 {loading ? 'Verifying...' : 'Verify & Continue'}
               </Button>
               <p className="text-center text-sm text-muted-foreground">
-                Didn't receive the code? Check your spam folder or{' '}
-                <button 
-                  onClick={() => { setShowOtp(false); setOtpValue(''); }}
-                  className="text-primary underline"
+                Didn't receive the code?{' '}
+                <button
+                  disabled={resendCooldown > 0}
+                  onClick={async () => {
+                    setLoading(true);
+                    try {
+                      const { error } = await supabase.auth.resend({ type: 'signup', email: signupEmail });
+                      if (error) throw error;
+                      setResendCooldown(60);
+                      toast({ title: 'OTP Resent!', description: 'Check your email for the new code.' });
+                    } catch (err: any) {
+                      toast({ title: 'Resend failed', description: err.message, variant: 'destructive' });
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  className="text-primary underline disabled:opacity-50 disabled:no-underline"
                 >
-                  try again
+                  {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend OTP'}
                 </button>
               </p>
             </CardContent>
