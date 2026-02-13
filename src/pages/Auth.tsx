@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,6 +18,9 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [location, setLocation] = useState<string>('');
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [showOtp, setShowOtp] = useState(false);
+  const [otpValue, setOtpValue] = useState('');
+  const [signupEmail, setSignupEmail] = useState('');
   
   const [signUpData, setSignUpData] = useState({
     firstName: '',
@@ -39,7 +43,6 @@ const Auth = () => {
   }, [user, navigate]);
 
   useEffect(() => {
-    // Get user's location
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
@@ -61,76 +64,22 @@ const Auth = () => {
     }
   }, []);
 
-  const requestLocationPermission = async () => {
-    try {
-      if ('geolocation' in navigator) {
-        const permission = await navigator.permissions.query({ name: 'geolocation' });
-        
-        if (permission.state === 'granted') {
-          getCurrentLocation();
-        } else if (permission.state === 'prompt') {
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              const { latitude, longitude } = position.coords;
-              setCurrentLocation({ lat: latitude, lng: longitude });
-              fetchLocationDetails(latitude, longitude);
-            },
-            (error) => {
-              console.error('Geolocation error:', error);
-              toast({
-                title: 'Location Permission',
-                description: 'Location access denied. Weather will use default location.',
-                variant: 'destructive'
-              });
-            }
-          );
-        } else {
-          toast({
-            title: 'Location Permission',
-            description: 'Location access denied. Weather will use default location.',
-            variant: 'destructive'
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Permission request error:', error);
-    }
-  };
-
-  const getCurrentLocation = () => {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        setCurrentLocation({ lat: latitude, lng: longitude });
-        fetchLocationDetails(latitude, longitude);
-      },
-      (error) => {
-        console.error('Geolocation error:', error);
-      }
-    );
-  };
-
-  const fetchLocationDetails = async (latitude: number, longitude: number) => {
-    try {
-      const response = await fetch(
-        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-      );
-      const data = await response.json();
-      setLocation(`${data.city}, ${data.principalSubdivision}, ${data.countryName}`);
-    } catch (error) {
-      console.error('Error fetching location details:', error);
-      setLocation('Location details unavailable');
-    }
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setSignUpData({ ...signUpData, phone: value });
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (signUpData.phone.length !== 10) {
+      toast({ title: 'Invalid phone number', description: 'Please enter a valid 10-digit phone number.', variant: 'destructive' });
+      return;
+    }
+
     setLoading(true);
     
     try {
-      // Request location permission during signup
-      await requestLocationPermission();
-
       const redirectUrl = `${window.location.origin}/`;
       
       const { data, error } = await supabase.auth.signUp({
@@ -150,7 +99,11 @@ const Auth = () => {
       if (error) throw error;
 
       if (data.user) {
-        // Create profile with phone number - first check if profile exists
+        // Store signup email for OTP verification
+        setSignupEmail(signUpData.email);
+        setShowOtp(true);
+
+        // Create/update profile
         const { data: existingProfile } = await supabase
           .from('profiles')
           .select('id')
@@ -158,8 +111,7 @@ const Auth = () => {
           .single();
 
         if (existingProfile) {
-          // Update existing profile
-          const { error: updateError } = await supabase
+          await supabase
             .from('profiles')
             .update({
               farmer_name: `${signUpData.firstName} ${signUpData.lastName}`,
@@ -168,13 +120,8 @@ const Auth = () => {
               location: location
             })
             .eq('user_id', data.user.id);
-
-          if (updateError) {
-            console.error('Error updating profile:', updateError);
-          }
         } else {
-          // Insert new profile
-          const { error: insertError } = await supabase
+          await supabase
             .from('profiles')
             .insert({
               user_id: data.user.id,
@@ -183,36 +130,25 @@ const Auth = () => {
               phone: signUpData.phone,
               location: location
             });
-
-          if (insertError) {
-            console.error('Error creating profile:', insertError);
-          }
         }
 
-        // Store location data if available
         if (currentLocation) {
-          const { error: locationError } = await supabase
+          await supabase
             .from('user_locations')
-            .insert([
-              {
-                user_id: data.user.id,
-                latitude: currentLocation.lat,
-                longitude: currentLocation.lng,
-                city: location.split(',')[0]?.trim() || '',
-                region: location.split(',')[1]?.trim() || '',
-                country: location.split(',')[2]?.trim() || ''
-              }
-            ]);
-
-          if (locationError) {
-            console.error('Error saving location:', locationError);
-          }
+            .insert([{
+              user_id: data.user.id,
+              latitude: currentLocation.lat,
+              longitude: currentLocation.lng,
+              city: location.split(',')[0]?.trim() || '',
+              region: location.split(',')[1]?.trim() || '',
+              country: location.split(',')[2]?.trim() || ''
+            }]);
         }
       }
       
       toast({ 
-        title: 'Registration successful!', 
-        description: 'Please check your email to confirm your account.'
+        title: 'OTP Sent!', 
+        description: 'Please check your email for the verification code.'
       });
     } catch (error: any) {
       toast({ 
@@ -220,6 +156,31 @@ const Auth = () => {
         description: error.message,
         variant: 'destructive'
       });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (otpValue.length !== 6) {
+      toast({ title: 'Invalid OTP', description: 'Please enter the 6-digit code.', variant: 'destructive' });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email: signupEmail,
+        token: otpValue,
+        type: 'signup'
+      });
+
+      if (error) throw error;
+
+      toast({ title: 'Account verified!', description: 'Welcome to Smart Farming.' });
+      navigate('/');
+    } catch (error: any) {
+      toast({ title: 'Verification failed', description: error.message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -249,6 +210,57 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
+  if (showOtp) {
+    return (
+      <div className="min-h-screen bg-gradient-nature flex flex-col">
+        <div className="p-4">
+          <Button 
+            variant="ghost" 
+            onClick={() => setShowOtp(false)}
+            className="text-white hover:bg-white/20 mb-4"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+        </div>
+        <div className="flex-1 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl font-bold text-primary">Verify Your Email</CardTitle>
+              <CardDescription>Enter the 6-digit code sent to {signupEmail}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex justify-center">
+                <InputOTP maxLength={6} value={otpValue} onChange={setOtpValue}>
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+              <Button onClick={handleVerifyOtp} className="w-full" disabled={loading}>
+                {loading ? 'Verifying...' : 'Verify & Continue'}
+              </Button>
+              <p className="text-center text-sm text-muted-foreground">
+                Didn't receive the code? Check your spam folder or{' '}
+                <button 
+                  onClick={() => { setShowOtp(false); setOtpValue(''); }}
+                  className="text-primary underline"
+                >
+                  try again
+                </button>
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-nature flex flex-col">
@@ -286,25 +298,11 @@ const Auth = () => {
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="signin-email">Email</Label>
-                    <Input
-                      id="signin-email"
-                      type="email"
-                      placeholder="Enter your email"
-                      value={signInData.email}
-                      onChange={(e) => setSignInData({ ...signInData, email: e.target.value })}
-                      required
-                    />
+                    <Input id="signin-email" type="email" placeholder="Enter your email" value={signInData.email} onChange={(e) => setSignInData({ ...signInData, email: e.target.value })} required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signin-password">Password</Label>
-                    <Input
-                      id="signin-password"
-                      type="password"
-                      placeholder="Enter your password"
-                      value={signInData.password}
-                      onChange={(e) => setSignInData({ ...signInData, password: e.target.value })}
-                      required
-                    />
+                    <Input id="signin-password" type="password" placeholder="Enter your password" value={signInData.password} onChange={(e) => setSignInData({ ...signInData, password: e.target.value })} required />
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? 'Signing in...' : 'Sign In'}
@@ -317,67 +315,41 @@ const Auth = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="firstName">First Name</Label>
-                      <Input
-                        id="firstName"
-                        placeholder="John"
-                        value={signUpData.firstName}
-                        onChange={(e) => setSignUpData({ ...signUpData, firstName: e.target.value })}
-                        required
-                      />
+                      <Input id="firstName" placeholder="John" value={signUpData.firstName} onChange={(e) => setSignUpData({ ...signUpData, firstName: e.target.value })} required />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="lastName">Last Name</Label>
-                      <Input
-                        id="lastName"
-                        placeholder="Doe"
-                        value={signUpData.lastName}
-                        onChange={(e) => setSignUpData({ ...signUpData, lastName: e.target.value })}
-                        required
-                      />
+                      <Input id="lastName" placeholder="Doe" value={signUpData.lastName} onChange={(e) => setSignUpData({ ...signUpData, lastName: e.target.value })} required />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="farmName">Farm Name</Label>
-                    <Input
-                      id="farmName"
-                      placeholder="Green Valley Farm"
-                      value={signUpData.farmName}
-                      onChange={(e) => setSignUpData({ ...signUpData, farmName: e.target.value })}
-                      required
-                    />
+                    <Input id="farmName" placeholder="Green Valley Farm" value={signUpData.farmName} onChange={(e) => setSignUpData({ ...signUpData, farmName: e.target.value })} required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="john@example.com"
-                      value={signUpData.email}
-                      onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })}
-                      required
-                    />
+                    <Input id="email" type="email" placeholder="john@gmail.com" value={signUpData.email} onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })} required />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
+                    <Label htmlFor="phone">Phone Number (10 digits)</Label>
                     <Input
                       id="phone"
                       type="tel"
-                      placeholder="+1 234 567 8900"
+                      inputMode="numeric"
+                      placeholder="9876543210"
                       value={signUpData.phone}
-                      onChange={(e) => setSignUpData({ ...signUpData, phone: e.target.value })}
+                      onChange={handlePhoneChange}
+                      maxLength={10}
+                      pattern="\d{10}"
                       required
                     />
+                    {signUpData.phone.length > 0 && signUpData.phone.length < 10 && (
+                      <p className="text-xs text-destructive">{signUpData.phone.length}/10 digits entered</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="Create a strong password"
-                      value={signUpData.password}
-                      onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
-                      required
-                    />
+                    <Input id="password" type="password" placeholder="Create a strong password" value={signUpData.password} onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })} required />
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? 'Creating account...' : 'Create Account'}
