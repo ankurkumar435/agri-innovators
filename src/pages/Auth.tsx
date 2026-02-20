@@ -362,20 +362,20 @@ const Auth = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="firstName">First Name</Label>
-                      <Input id="firstName" placeholder="John" value={signUpData.firstName} onChange={(e) => setSignUpData({ ...signUpData, firstName: e.target.value })} required />
+                      <Input id="firstName" placeholder="Enter your first name" value={signUpData.firstName} onChange={(e) => setSignUpData({ ...signUpData, firstName: e.target.value })} required />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="lastName">Last Name</Label>
-                      <Input id="lastName" placeholder="Doe" value={signUpData.lastName} onChange={(e) => setSignUpData({ ...signUpData, lastName: e.target.value })} required />
+                      <Input id="lastName" placeholder="Enter your last name" value={signUpData.lastName} onChange={(e) => setSignUpData({ ...signUpData, lastName: e.target.value })} required />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="farmName">Farm Name</Label>
-                    <Input id="farmName" placeholder="Green Valley Farm" value={signUpData.farmName} onChange={(e) => setSignUpData({ ...signUpData, farmName: e.target.value })} required />
+                    <Input id="farmName" placeholder="Enter your farm name" value={signUpData.farmName} onChange={(e) => setSignUpData({ ...signUpData, farmName: e.target.value })} required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" placeholder="john@gmail.com" value={signUpData.email} onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })} required />
+                    <Input id="email" type="email" placeholder="Enter your email address" value={signUpData.email} onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })} required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone">Phone Number (10 digits)</Label>
@@ -383,7 +383,7 @@ const Auth = () => {
                       id="phone"
                       type="tel"
                       inputMode="numeric"
-                      placeholder="9876543210"
+                      placeholder="Enter your 10-digit phone number"
                       value={signUpData.phone}
                       onChange={handlePhoneChange}
                       maxLength={10}
@@ -396,7 +396,7 @@ const Auth = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="password">Password</Label>
-                    <Input id="password" type="password" placeholder="Create a strong password" value={signUpData.password} onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })} required />
+                    <Input id="password" type="password" placeholder="Enter a strong password" value={signUpData.password} onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })} required />
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? 'Creating account...' : 'Create Account'}
