@@ -93,7 +93,7 @@ const Contact = () => {
               </div>
               <div>
                 <h3 className="font-semibold text-foreground">Address</h3>
-                <p className="text-muted-foreground">123 Farm Tech Avenue, Agricultural District, State 12345</p>
+                <p className="text-muted-foreground">Maharishi University Of Information and Technology</p>
               </div>
             </div>
           </Card>
