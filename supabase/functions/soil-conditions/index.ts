@@ -711,8 +711,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: 'Failed to fetch soil conditions',
-        message: error.message 
+        error: 'An unexpected error occurred. Please try again.'
       }),
       { 
         status: 500, 
