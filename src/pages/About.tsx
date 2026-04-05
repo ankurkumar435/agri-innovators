@@ -27,17 +27,17 @@ const About = () => {
 
   const team = [
     {
-      name: 'Dr. Sarah Johnson',
+      name: 'Ankur Kumar',
       role: 'Agricultural Scientist',
       description: 'Leading expert in sustainable farming practices with 15+ years of experience.'
     },
     {
-      name: 'Michael Chen',
+      name: 'Anchal Gupta',
       role: 'AI Technology Lead',
       description: 'Specializing in machine learning applications for agricultural optimization.'
     },
     {
-      name: 'Emma Rodriguez',
+      name: 'Shanvi Kesherwani',
       role: 'Field Operations Manager',
       description: 'Coordinating field testing and farmer feedback integration.'
     }
