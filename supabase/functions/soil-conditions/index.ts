@@ -1,9 +1,18 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const bodySchema = z.object({
+  state: z.string().max(100).optional(),
+  city: z.string().max(100).optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+});
 
 // Comprehensive soil data for Indian states based on soil health card parameters
 const stateSoilData: Record<string, {
@@ -532,13 +541,42 @@ function getNutrientStatus(value: number, low: number, medium: number): { status
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { state, city, latitude, longitude } = await req.json();
+    // Auth check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Input validation
+    const rawBody = await req.json();
+    const parsed = bodySchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: 'Invalid input' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const { state, city, latitude, longitude } = parsed.data;
     
     console.log('Fetching soil conditions for:', { state, city, latitude, longitude });
     
@@ -673,8 +711,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: 'Failed to fetch soil conditions',
-        message: error.message 
+        error: 'An unexpected error occurred. Please try again.'
       }),
       { 
         status: 500, 

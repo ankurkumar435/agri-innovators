@@ -1,10 +1,26 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const bodySchema = z.object({
+  location: z.object({
+    city: z.string().max(200).optional(),
+    region: z.string().max(200).optional(),
+    latitude: z.number().min(-90).max(90).optional(),
+    longitude: z.number().min(-180).max(180).optional(),
+  }).optional(),
+  crops: z.array(z.string().max(100)).max(20).optional(),
+  weather: z.object({
+    temperature: z.number().optional(),
+    condition: z.string().max(100).optional(),
+  }).optional(),
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -12,11 +28,51 @@ serve(async (req) => {
   }
 
   try {
-    const { location, crops, weather } = await req.json();
+    // Auth check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Input validation
+    const rawBody = await req.json();
+    const parsed = bodySchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: 'Invalid input' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const { location, crops, weather } = parsed.data;
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
     if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+      console.error("LOVABLE_API_KEY is not configured");
+      return new Response(JSON.stringify({ 
+        error: 'Service temporarily unavailable.',
+        recommendations: getDefaultRecommendations(getSeason())
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const currentMonth = new Date().toLocaleString('en-US', { month: 'long' });
@@ -49,7 +105,7 @@ Return ONLY valid JSON array with this exact structure:
     const userPrompt = `Generate farming recommendations for:
 - Location: ${location?.city || 'India'}, ${location?.region || ''}
 - Coordinates: ${location?.latitude || 'N/A'}, ${location?.longitude || 'N/A'}
-- Current crops: ${crops?.length > 0 ? crops.join(', ') : 'Not specified'}
+- Current crops: ${crops?.length ? crops.join(', ') : 'Not specified'}
 - Weather: ${weather ? `${weather.temperature}°C, ${weather.condition}` : 'Not available'}
 - Current month: ${currentMonth}
 - Season: ${currentSeason}
@@ -80,7 +136,7 @@ Provide practical, location-specific recommendations considering local climate a
       console.error("AI gateway error:", response.status, errorText);
       
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
+        return new Response(JSON.stringify({ error: "Service is busy. Please try again later." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -91,18 +147,14 @@ Provide practical, location-specific recommendations considering local climate a
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      throw new Error(`AI gateway error: ${response.status}`);
+      throw new Error('AI gateway error');
     }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
-    
-    console.log('Raw AI response:', content);
 
-    // Parse JSON from response
     let recommendations = [];
     try {
-      // Extract JSON array from response
       const jsonMatch = content.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         recommendations = JSON.parse(jsonMatch[0]);
@@ -114,7 +166,6 @@ Provide practical, location-specific recommendations considering local climate a
       recommendations = getDefaultRecommendations(currentSeason);
     }
 
-    // Validate and sanitize recommendations
     recommendations = recommendations.map((rec: any) => ({
       category: rec.category || 'General',
       categoryHindi: rec.categoryHindi || 'सामान्य',
@@ -133,7 +184,7 @@ Provide practical, location-specific recommendations considering local climate a
   } catch (error) {
     console.error("Error in ai-recommendations:", error);
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: 'An unexpected error occurred. Please try again.',
       recommendations: getDefaultRecommendations(getSeason())
     }), {
       status: 500,
