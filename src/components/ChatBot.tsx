@@ -3,9 +3,39 @@ import { Bot, Send, User, Loader2, Mic, MicOff, Volume2, VolumeX } from 'lucide-
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
+
+const VOICE_LOCALES: { value: string; label: string }[] = [
+  { value: 'auto', label: '🌐 Auto-detect' },
+  { value: 'en-IN', label: '🇮🇳 English (India)' },
+  { value: 'en-US', label: '🇺🇸 English (US)' },
+  { value: 'en-GB', label: '🇬🇧 English (UK)' },
+  { value: 'hi-IN', label: '🇮🇳 हिन्दी (Hindi)' },
+  { value: 'pa-IN', label: '🇮🇳 ਪੰਜਾਬੀ (Punjabi)' },
+  { value: 'mr-IN', label: '🇮🇳 मराठी (Marathi)' },
+  { value: 'bn-IN', label: '🇮🇳 বাংলা (Bengali)' },
+  { value: 'ta-IN', label: '🇮🇳 தமிழ் (Tamil)' },
+  { value: 'te-IN', label: '🇮🇳 తెలుగు (Telugu)' },
+  { value: 'gu-IN', label: '🇮🇳 ગુજરાતી (Gujarati)' },
+  { value: 'kn-IN', label: '🇮🇳 ಕನ್ನಡ (Kannada)' },
+  { value: 'ml-IN', label: '🇮🇳 മലയാളം (Malayalam)' },
+  { value: 'ur-IN', label: '🇮🇳 اردو (Urdu)' },
+];
+
+const detectAutoLocale = (uiLang?: string): string => {
+  const map: Record<string, string> = { en: 'en-IN', hi: 'hi-IN', pa: 'pa-IN', mr: 'mr-IN' };
+  if (uiLang && map[uiLang]) return map[uiLang];
+  const nav = typeof navigator !== 'undefined' ? navigator.language : '';
+  if (nav && /^[a-z]{2}-[A-Z]{2}$/.test(nav)) return nav;
+  if (nav) {
+    const base = nav.split('-')[0];
+    return map[base] || `${base}-IN`;
+  }
+  return 'en-IN';
+};
 
 interface Message {
   id: string;
@@ -32,9 +62,17 @@ export const ChatBot: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+  const { language } = useLanguage() as any;
+  const [voiceLocale, setVoiceLocale] = useState<string>(() => {
+    return (typeof localStorage !== 'undefined' && localStorage.getItem('voiceLocale')) || 'auto';
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    try { localStorage.setItem('voiceLocale', voiceLocale); } catch {}
+  }, [voiceLocale]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -140,12 +178,14 @@ export const ChatBot: React.FC = () => {
           }
         }
 
-        recognitionRef.current.lang = 'hi-IN';
+        const effectiveLocale = voiceLocale === 'auto' ? detectAutoLocale(language) : voiceLocale;
+        recognitionRef.current.lang = effectiveLocale;
         recognitionRef.current?.start();
         setIsListening(true);
+        const label = VOICE_LOCALES.find(l => l.value === voiceLocale)?.label ?? effectiveLocale;
         toast({
           title: "Listening...",
-          description: "Speak now. You can speak in English, Hindi, or other languages.",
+          description: `Speak now — recognizing as ${label}${voiceLocale === 'auto' ? ` (${effectiveLocale})` : ''}.`,
         });
       } catch (error) {
         console.error('Error starting speech recognition:', error);
@@ -470,8 +510,23 @@ export const ChatBot: React.FC = () => {
             )}
           </Button>
         </form>
+        <div className="flex items-center justify-between gap-2 mt-3">
+          <label className="text-xs text-muted-foreground flex-shrink-0">Voice language</label>
+          <Select value={voiceLocale} onValueChange={setVoiceLocale} disabled={isListening}>
+            <SelectTrigger className="h-8 text-xs w-[200px]">
+              <SelectValue placeholder="Auto-detect" />
+            </SelectTrigger>
+            <SelectContent className="max-h-72">
+              {VOICE_LOCALES.map((l) => (
+                <SelectItem key={l.value} value={l.value} className="text-xs">
+                  {l.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <p className="text-xs text-muted-foreground mt-2 text-center">
-          🎤 Click the mic to speak in English, Hindi, or other languages
+          🎤 Pick your language/accent above for better recognition accuracy
         </p>
       </Card>
     </div>
