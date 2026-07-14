@@ -80,6 +80,8 @@ export const ChatBot: React.FC = () => {
 
       recognitionRef.current.onend = () => {
         setIsListening(false);
+        micStreamRef.current?.getTracks().forEach((t) => t.stop());
+        micStreamRef.current = null;
       };
     }
 
