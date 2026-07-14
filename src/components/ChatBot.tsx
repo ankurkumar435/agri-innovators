@@ -167,14 +167,30 @@ export const ChatBot: React.FC = () => {
 
       const utterance = new SpeechSynthesisUtterance(content);
       utterance.lang = langCode;
-      utterance.rate = 0.9;
-      utterance.pitch = 1;
+      utterance.rate = 0.95;
+      utterance.pitch = 1.05;
+      utterance.volume = 1;
 
-      // Get available voices and try to find a matching one
+      // Pick the clearest available voice: prefer Google/Microsoft natural cloud voices.
       const voices = window.speechSynthesis.getVoices();
-      const matchingVoice = voices.find(voice => voice.lang.startsWith(langCode.split('-')[0]));
-      if (matchingVoice) {
-        utterance.voice = matchingVoice;
+      const base = langCode.split('-')[0];
+      const langVoices = voices.filter(v => v.lang.toLowerCase().startsWith(base));
+      const score = (v: SpeechSynthesisVoice) => {
+        const n = v.name.toLowerCase();
+        let s = 0;
+        if (v.lang.toLowerCase() === langCode.toLowerCase()) s += 5;
+        if (n.includes('google')) s += 4;
+        if (n.includes('natural') || n.includes('neural') || n.includes('online')) s += 4;
+        if (n.includes('microsoft')) s += 3;
+        if (n.includes('female') || n.includes('aria') || n.includes('jenny') || n.includes('neerja') || n.includes('swara') || n.includes('heera')) s += 2;
+        if (!v.localService) s += 1;
+        return s;
+      };
+      const bestVoice = [...langVoices].sort((a, b) => score(b) - score(a))[0]
+        || voices.find(v => v.lang.toLowerCase().startsWith('en'));
+      if (bestVoice) {
+        utterance.voice = bestVoice;
+        utterance.lang = bestVoice.lang;
       }
 
       utterance.onend = () => {
