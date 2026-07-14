@@ -510,8 +510,23 @@ export const ChatBot: React.FC = () => {
             )}
           </Button>
         </form>
+        <div className="flex items-center justify-between gap-2 mt-3">
+          <label className="text-xs text-muted-foreground flex-shrink-0">Voice language</label>
+          <Select value={voiceLocale} onValueChange={setVoiceLocale} disabled={isListening}>
+            <SelectTrigger className="h-8 text-xs w-[200px]">
+              <SelectValue placeholder="Auto-detect" />
+            </SelectTrigger>
+            <SelectContent className="max-h-72">
+              {VOICE_LOCALES.map((l) => (
+                <SelectItem key={l.value} value={l.value} className="text-xs">
+                  {l.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <p className="text-xs text-muted-foreground mt-2 text-center">
-          🎤 Click the mic to speak in English, Hindi, or other languages
+          🎤 Pick your language/accent above for better recognition accuracy
         </p>
       </Card>
     </div>
