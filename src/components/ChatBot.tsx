@@ -3,9 +3,39 @@ import { Bot, Send, User, Loader2, Mic, MicOff, Volume2, VolumeX } from 'lucide-
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
+
+const VOICE_LOCALES: { value: string; label: string }[] = [
+  { value: 'auto', label: '🌐 Auto-detect' },
+  { value: 'en-IN', label: '🇮🇳 English (India)' },
+  { value: 'en-US', label: '🇺🇸 English (US)' },
+  { value: 'en-GB', label: '🇬🇧 English (UK)' },
+  { value: 'hi-IN', label: '🇮🇳 हिन्दी (Hindi)' },
+  { value: 'pa-IN', label: '🇮🇳 ਪੰਜਾਬੀ (Punjabi)' },
+  { value: 'mr-IN', label: '🇮🇳 मराठी (Marathi)' },
+  { value: 'bn-IN', label: '🇮🇳 বাংলা (Bengali)' },
+  { value: 'ta-IN', label: '🇮🇳 தமிழ் (Tamil)' },
+  { value: 'te-IN', label: '🇮🇳 తెలుగు (Telugu)' },
+  { value: 'gu-IN', label: '🇮🇳 ગુજરાતી (Gujarati)' },
+  { value: 'kn-IN', label: '🇮🇳 ಕನ್ನಡ (Kannada)' },
+  { value: 'ml-IN', label: '🇮🇳 മലയാളം (Malayalam)' },
+  { value: 'ur-IN', label: '🇮🇳 اردو (Urdu)' },
+];
+
+const detectAutoLocale = (uiLang?: string): string => {
+  const map: Record<string, string> = { en: 'en-IN', hi: 'hi-IN', pa: 'pa-IN', mr: 'mr-IN' };
+  if (uiLang && map[uiLang]) return map[uiLang];
+  const nav = typeof navigator !== 'undefined' ? navigator.language : '';
+  if (nav && /^[a-z]{2}-[A-Z]{2}$/.test(nav)) return nav;
+  if (nav) {
+    const base = nav.split('-')[0];
+    return map[base] || `${base}-IN`;
+  }
+  return 'en-IN';
+};
 
 interface Message {
   id: string;
