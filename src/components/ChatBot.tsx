@@ -178,12 +178,14 @@ export const ChatBot: React.FC = () => {
           }
         }
 
-        recognitionRef.current.lang = 'hi-IN';
+        const effectiveLocale = voiceLocale === 'auto' ? detectAutoLocale(language) : voiceLocale;
+        recognitionRef.current.lang = effectiveLocale;
         recognitionRef.current?.start();
         setIsListening(true);
+        const label = VOICE_LOCALES.find(l => l.value === voiceLocale)?.label ?? effectiveLocale;
         toast({
           title: "Listening...",
-          description: "Speak now. You can speak in English, Hindi, or other languages.",
+          description: `Speak now — recognizing as ${label}${voiceLocale === 'auto' ? ` (${effectiveLocale})` : ''}.`,
         });
       } catch (error) {
         console.error('Error starting speech recognition:', error);
