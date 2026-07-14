@@ -97,7 +97,14 @@ export const ChatBot: React.FC = () => {
     };
   }, []);
 
-  const toggleListening = () => {
+  const micStreamRef = useRef<MediaStream | null>(null);
+
+  const stopMicStream = () => {
+    micStreamRef.current?.getTracks().forEach((t) => t.stop());
+    micStreamRef.current = null;
+  };
+
+  const toggleListening = async () => {
     if (!SpeechRecognition) {
       toast({
         title: "Not Supported",
@@ -109,11 +116,29 @@ export const ChatBot: React.FC = () => {
 
     if (isListening) {
       recognitionRef.current?.stop();
+      stopMicStream();
       setIsListening(false);
     } else {
       try {
-        // Set language to auto-detect (supports multiple Indian languages)
-        recognitionRef.current.lang = 'hi-IN'; // Hindi
+        // Prime the mic with noise suppression, echo cancellation, and auto gain
+        // for a cleaner input signal before starting recognition.
+        if (navigator.mediaDevices?.getUserMedia) {
+          try {
+            micStreamRef.current = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+                channelCount: 1,
+                sampleRate: 48000,
+              } as MediaTrackConstraints,
+            });
+          } catch (e) {
+            console.warn('Enhanced audio constraints unavailable, falling back:', e);
+          }
+        }
+
+        recognitionRef.current.lang = 'hi-IN';
         recognitionRef.current?.start();
         setIsListening(true);
         toast({
@@ -122,6 +147,7 @@ export const ChatBot: React.FC = () => {
         });
       } catch (error) {
         console.error('Error starting speech recognition:', error);
+        stopMicStream();
         toast({
           title: "Error",
           description: "Could not start voice input. Please try again.",
