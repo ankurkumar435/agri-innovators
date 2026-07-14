@@ -62,9 +62,17 @@ export const ChatBot: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+  const { language } = useLanguage() as any;
+  const [voiceLocale, setVoiceLocale] = useState<string>(() => {
+    return (typeof localStorage !== 'undefined' && localStorage.getItem('voiceLocale')) || 'auto';
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    try { localStorage.setItem('voiceLocale', voiceLocale); } catch {}
+  }, [voiceLocale]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
