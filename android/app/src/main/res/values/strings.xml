@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Agri Innovators</string>
+    <string name="title_activity_main">Agri Innovators</string>
+    <string name="package_name">app.lovable.f70938df8ad94818a0fa3337e6b7c7f9</string>
+    <string name="custom_url_scheme">app.lovable.f70938df8ad94818a0fa3337e6b7c7f9</string>
+</resources>
