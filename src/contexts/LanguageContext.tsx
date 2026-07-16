@@ -218,18 +218,11 @@ const translations = {
     enterEmailFirstDesc: "Please enter your email address first.",
 
     // About extras
-    ourImpact: "Our Impact",
     aboutTagline: "Revolutionizing agriculture with AI technology",
 
     // Contact extras
     contactUsTitle: "Contact Us",
     sendUsMessage: "Send us a message",
-    yourName: "Your Name",
-    yourEmail: "Your Email",
-    subjectLabel: "Subject",
-    yourMessage: "Your Message",
-    sendMessageBtn: "Send Message",
-    addressLabel: "Address",
     messageSent: "Message Sent!",
     messageSentDesc: "Thank you for contacting us. We'll get back to you soon.",
   },
