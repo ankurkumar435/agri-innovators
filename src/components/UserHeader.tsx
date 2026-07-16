@@ -52,16 +52,16 @@ export const UserHeader: React.FC = () => {
       if (userLocation) {
         const locationString = [userLocation.city, userLocation.region, userLocation.country]
           .filter(Boolean)
-          .join(', ') || 'Location not set';
+          .join(', ') || t('locationNotSet');
         setLocation(locationString);
       } else {
-        setLocation(profile?.location || 'Location not set');
+        setLocation(profile?.location || t('locationNotSet'));
       }
     } catch (error) {
       console.error('Error fetching location:', error);
-      setLocation(profile?.location || 'Location not set');
+      setLocation(profile?.location || t('locationNotSet'));
     }
-  }, [user, profile]);
+  }, [user, profile, t]);
 
   // Subscribe to realtime location updates
   useEffect(() => {
