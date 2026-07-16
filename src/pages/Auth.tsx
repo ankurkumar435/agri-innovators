@@ -9,12 +9,14 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { ArrowLeft, MapPin } from 'lucide-react';
 
 const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [location, setLocation] = useState<string>('');
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
@@ -62,15 +64,15 @@ const Auth = () => {
             const data = await response.json();
             setLocation(`${data.city}, ${data.principalSubdivision}, ${data.countryName}`);
           } catch (error) {
-            setLocation('Location not available');
+            setLocation(t('locationNotSet'));
           }
         },
         () => {
-          setLocation('Location access denied');
+          setLocation(t('locationNotSet'));
         }
       );
     }
-  }, []);
+  }, [t]);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, '').slice(0, 10);
@@ -81,7 +83,7 @@ const Auth = () => {
     e.preventDefault();
 
     if (signUpData.phone.length !== 10) {
-      toast({ title: 'Invalid phone number', description: 'Please enter a valid 10-digit phone number.', variant: 'destructive' });
+      toast({ title: t('invalidPhone'), description: t('invalidPhoneDesc'), variant: 'destructive' });
       return;
     }
 
@@ -107,11 +109,9 @@ const Auth = () => {
       if (error) throw error;
 
       if (data.user) {
-        // Store signup email for OTP verification
         setSignupEmail(signUpData.email);
         setShowOtp(true);
         setResendCooldown(60);
-        // Create/update profile
         const { data: existingProfile } = await supabase
           .from('profiles')
           .select('id')
@@ -154,16 +154,9 @@ const Auth = () => {
         }
       }
       
-      toast({ 
-        title: 'OTP Sent!', 
-        description: 'Please check your email for the verification code.'
-      });
+      toast({ title: t('otpSent'), description: t('otpSentDesc') });
     } catch (error: any) {
-      toast({ 
-        title: 'Registration failed', 
-        description: error.message,
-        variant: 'destructive'
-      });
+      toast({ title: t('registrationFailed'), description: error.message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -171,7 +164,7 @@ const Auth = () => {
 
   const handleVerifyOtp = async () => {
     if (otpValue.length !== 6) {
-      toast({ title: 'Invalid OTP', description: 'Please enter the 6-digit code.', variant: 'destructive' });
+      toast({ title: t('invalidOtp'), description: t('invalidOtpDesc'), variant: 'destructive' });
       return;
     }
 
@@ -185,10 +178,10 @@ const Auth = () => {
 
       if (error) throw error;
 
-      toast({ title: 'Account verified!', description: 'Welcome to Smart Farming.' });
+      toast({ title: t('accountVerified'), description: t('welcomeSmartFarming') });
       navigate('/');
     } catch (error: any) {
-      toast({ title: 'Verification failed', description: error.message, variant: 'destructive' });
+      toast({ title: t('verificationFailed'), description: error.message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -206,14 +199,10 @@ const Auth = () => {
 
       if (error) throw error;
       
-      toast({ title: 'Welcome back!' });
+      toast({ title: t('welcomeBack') });
       navigate('/');
     } catch (error: any) {
-      toast({ 
-        title: 'Login failed', 
-        description: error.message,
-        variant: 'destructive'
-      });
+      toast({ title: t('loginFailed'), description: error.message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -229,14 +218,14 @@ const Auth = () => {
             className="text-white hover:bg-white/20 mb-4"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
+            {t('back')}
           </Button>
         </div>
         <div className="flex-1 flex items-center justify-center p-4">
           <Card className="w-full max-w-md">
             <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-bold text-primary">Verify Your Email</CardTitle>
-              <CardDescription>Enter the 6-digit code sent to {signupEmail}</CardDescription>
+              <CardTitle className="text-2xl font-bold text-primary">{t('verifyEmail')}</CardTitle>
+              <CardDescription>{t('enterOtpSent')} {signupEmail}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex justify-center">
@@ -252,10 +241,10 @@ const Auth = () => {
                 </InputOTP>
               </div>
               <Button onClick={handleVerifyOtp} className="w-full" disabled={loading}>
-                {loading ? 'Verifying...' : 'Verify & Continue'}
+                {loading ? t('verifying') : t('verifyAndContinue')}
               </Button>
               <p className="text-center text-sm text-muted-foreground">
-                Didn't receive the code?{' '}
+                {t('didntReceiveCode')}{' '}
                 <button
                   disabled={resendCooldown > 0}
                   onClick={async () => {
@@ -264,16 +253,16 @@ const Auth = () => {
                       const { error } = await supabase.auth.resend({ type: 'signup', email: signupEmail });
                       if (error) throw error;
                       setResendCooldown(60);
-                      toast({ title: 'OTP Resent!', description: 'Check your email for the new code.' });
+                      toast({ title: t('otpResent'), description: t('otpResentDesc') });
                     } catch (err: any) {
-                      toast({ title: 'Resend failed', description: err.message, variant: 'destructive' });
+                      toast({ title: t('resendFailedTitle'), description: err.message, variant: 'destructive' });
                     } finally {
                       setLoading(false);
                     }
                   }}
                   className="text-primary underline disabled:opacity-50 disabled:no-underline"
                 >
-                  {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend OTP'}
+                  {resendCooldown > 0 ? `${t('resendIn')} ${resendCooldown}s` : t('resendOtp')}
                 </button>
               </p>
             </CardContent>
@@ -292,15 +281,15 @@ const Auth = () => {
           className="text-white hover:bg-white/20 mb-4"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Home
+          {t('backToHome')}
         </Button>
       </div>
 
       <div className="flex-1 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-primary">Smart Farming</CardTitle>
-            <CardDescription>Join our AI-powered farming community</CardDescription>
+            <CardTitle className="text-2xl font-bold text-primary">{t('smartFarming')}</CardTitle>
+            <CardDescription>{t('joinCommunity')}</CardDescription>
             {location && (
               <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground mt-2">
                 <MapPin className="w-4 h-4" />
@@ -311,29 +300,29 @@ const Auth = () => {
           <CardContent>
             <Tabs defaultValue="signin" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                <TabsTrigger value="signin">{t('signIn')}</TabsTrigger>
+                <TabsTrigger value="signup">{t('signUp')}</TabsTrigger>
               </TabsList>
               
               <TabsContent value="signin">
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
-                    <Input id="signin-email" type="email" placeholder="Enter your email" value={signInData.email} onChange={(e) => setSignInData({ ...signInData, email: e.target.value })} required />
+                    <Label htmlFor="signin-email">{t('email')}</Label>
+                    <Input id="signin-email" type="email" placeholder={t('enterEmail')} value={signInData.email} onChange={(e) => setSignInData({ ...signInData, email: e.target.value })} required />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signin-password">Password</Label>
-                    <Input id="signin-password" type="password" placeholder="Enter your password" value={signInData.password} onChange={(e) => setSignInData({ ...signInData, password: e.target.value })} required />
+                    <Label htmlFor="signin-password">{t('password')}</Label>
+                    <Input id="signin-password" type="password" placeholder={t('enterPassword')} value={signInData.password} onChange={(e) => setSignInData({ ...signInData, password: e.target.value })} required />
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? 'Signing in...' : 'Sign In'}
+                    {loading ? t('signingIn') : t('signIn')}
                   </Button>
                   <div className="text-center">
                     <button
                       type="button"
                       onClick={async () => {
                         if (!signInData.email) {
-                          toast({ title: 'Enter your email', description: 'Please enter your email address first.', variant: 'destructive' });
+                          toast({ title: t('enterEmailFirst'), description: t('enterEmailFirstDesc'), variant: 'destructive' });
                           return;
                         }
                         setLoading(true);
@@ -342,16 +331,16 @@ const Auth = () => {
                             redirectTo: `${window.location.origin}/reset-password`,
                           });
                           if (error) throw error;
-                          toast({ title: 'Reset link sent!', description: 'Check your email for the password reset link.' });
+                          toast({ title: t('resetLinkSent'), description: t('resetLinkSentDesc') });
                         } catch (err: any) {
-                          toast({ title: 'Failed to send reset link', description: err.message, variant: 'destructive' });
+                          toast({ title: t('resetLinkFailed'), description: err.message, variant: 'destructive' });
                         } finally {
                           setLoading(false);
                         }
                       }}
                       className="text-sm text-primary underline hover:text-primary/80"
                     >
-                      Forgot Password?
+                      {t('forgotPassword')}
                     </button>
                   </div>
                 </form>
@@ -361,29 +350,29 @@ const Auth = () => {
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="firstName">First Name</Label>
-                      <Input id="firstName" placeholder="Enter your first name" value={signUpData.firstName} onChange={(e) => setSignUpData({ ...signUpData, firstName: e.target.value })} required />
+                      <Label htmlFor="firstName">{t('firstName')}</Label>
+                      <Input id="firstName" placeholder={t('enterFirstName')} value={signUpData.firstName} onChange={(e) => setSignUpData({ ...signUpData, firstName: e.target.value })} required />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="lastName">Last Name</Label>
-                      <Input id="lastName" placeholder="Enter your last name" value={signUpData.lastName} onChange={(e) => setSignUpData({ ...signUpData, lastName: e.target.value })} required />
+                      <Label htmlFor="lastName">{t('lastName')}</Label>
+                      <Input id="lastName" placeholder={t('enterLastName')} value={signUpData.lastName} onChange={(e) => setSignUpData({ ...signUpData, lastName: e.target.value })} required />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="farmName">Farm Name</Label>
-                    <Input id="farmName" placeholder="Enter your farm name" value={signUpData.farmName} onChange={(e) => setSignUpData({ ...signUpData, farmName: e.target.value })} required />
+                    <Label htmlFor="farmName">{t('farmName')}</Label>
+                    <Input id="farmName" placeholder={t('enterFarmName')} value={signUpData.farmName} onChange={(e) => setSignUpData({ ...signUpData, farmName: e.target.value })} required />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" placeholder="Enter your email address" value={signUpData.email} onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })} required />
+                    <Label htmlFor="email">{t('email')}</Label>
+                    <Input id="email" type="email" placeholder={t('enterEmailAddress')} value={signUpData.email} onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })} required />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number (10 digits)</Label>
+                    <Label htmlFor="phone">{t('phoneNumberLabel')}</Label>
                     <Input
                       id="phone"
                       type="tel"
                       inputMode="numeric"
-                      placeholder="Enter your 10-digit phone number"
+                      placeholder={t('enterPhone10')}
                       value={signUpData.phone}
                       onChange={handlePhoneChange}
                       maxLength={10}
@@ -391,15 +380,15 @@ const Auth = () => {
                       required
                     />
                     {signUpData.phone.length > 0 && signUpData.phone.length < 10 && (
-                      <p className="text-xs text-destructive">{signUpData.phone.length}/10 digits entered</p>
+                      <p className="text-xs text-destructive">{signUpData.phone.length}/10 {t('digitsEntered')}</p>
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input id="password" type="password" placeholder="Enter a strong password" value={signUpData.password} onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })} required />
+                    <Label htmlFor="password">{t('password')}</Label>
+                    <Input id="password" type="password" placeholder={t('enterStrongPassword')} value={signUpData.password} onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })} required />
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? 'Creating account...' : 'Create Account'}
+                    {loading ? t('creatingAccount') : t('createAccount')}
                   </Button>
                 </form>
               </TabsContent>
