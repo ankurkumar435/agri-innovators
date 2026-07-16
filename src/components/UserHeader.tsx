@@ -4,9 +4,11 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { AuthDropdown } from '@/components/AuthDropdown';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export const UserHeader: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [profile, setProfile] = useState<any>(null);
   const [location, setLocation] = useState<string>('');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -50,16 +52,16 @@ export const UserHeader: React.FC = () => {
       if (userLocation) {
         const locationString = [userLocation.city, userLocation.region, userLocation.country]
           .filter(Boolean)
-          .join(', ') || 'Location not set';
+          .join(', ') || t('locationNotSet');
         setLocation(locationString);
       } else {
-        setLocation(profile?.location || 'Location not set');
+        setLocation(profile?.location || t('locationNotSet'));
       }
     } catch (error) {
       console.error('Error fetching location:', error);
-      setLocation(profile?.location || 'Location not set');
+      setLocation(profile?.location || t('locationNotSet'));
     }
-  }, [user, profile]);
+  }, [user, profile, t]);
 
   // Subscribe to realtime location updates
   useEffect(() => {
@@ -137,9 +139,9 @@ export const UserHeader: React.FC = () => {
     }
   };
 
-  const userName = user ? (profile?.farmer_name || user.email?.split('@')[0] || 'User') : 'Guest User';
-  const phoneNumber = user ? (profile?.phone || 'No phone') : '+91 98765 43210';
-  const displayLocation = user ? (location || 'Location not set') : 'Punjabi Village, Punjab, India';
+  const userName = user ? (profile?.farmer_name || user.email?.split('@')[0] || t('guestUser')) : t('guestUser');
+  const phoneNumber = user ? (profile?.phone || t('noPhone')) : '+91 98765 43210';
+  const displayLocation = user ? (location || t('locationNotSet')) : t('locationNotSet');
 
   return (
     <div className="bg-gradient-nature text-white p-4 rounded-b-3xl shadow-medium">
