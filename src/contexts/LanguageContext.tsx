@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 export type Language = 'en' | 'hi' | 'pa' | 'mr';
 
@@ -596,11 +596,43 @@ const translations = {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
+const STORAGE_KEY = 'app.language';
+const SUPPORTED: Language[] = ['en', 'hi', 'pa', 'mr'];
+
+const detectInitialLanguage = (): Language => {
+  if (typeof window === 'undefined') return 'en';
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY) as Language | null;
+    if (stored && SUPPORTED.includes(stored)) return stored;
+  } catch {}
+  const nav = (navigator.language || 'en').toLowerCase();
+  if (nav.startsWith('hi')) return 'hi';
+  if (nav.startsWith('pa')) return 'pa';
+  if (nav.startsWith('mr')) return 'mr';
+  return 'en';
+};
+
 export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [language, setLanguage] = useState<Language>('en');
+  const [language, setLanguageState] = useState<Language>(detectInitialLanguage);
+
+  const setLanguage = (lang: Language) => {
+    setLanguageState(lang);
+    try {
+      window.localStorage.setItem(STORAGE_KEY, lang);
+    } catch {}
+  };
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      const map: Record<Language, string> = { en: 'en', hi: 'hi', pa: 'pa', mr: 'mr' };
+      document.documentElement.lang = map[language];
+    }
+  }, [language]);
 
   const t = (key: string): string => {
-    return translations[language][key as keyof typeof translations.en] || key;
+    const dict = translations[language] as Record<string, string>;
+    const fallback = translations.en as Record<string, string>;
+    return dict[key] ?? fallback[key] ?? key;
   };
 
   return (
