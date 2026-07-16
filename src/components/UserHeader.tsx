@@ -4,9 +4,11 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { AuthDropdown } from '@/components/AuthDropdown';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export const UserHeader: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [profile, setProfile] = useState<any>(null);
   const [location, setLocation] = useState<string>('');
   const [isRefreshing, setIsRefreshing] = useState(false);
