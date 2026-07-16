@@ -862,7 +862,6 @@ const translations = {
     createAccount: "खाते तयार करा",
     creatingAccount: "खाते तयार होत आहे...",
     signingIn: "साइन इन होत आहे...",
-    signIn: "साइन इन",
     digitsEntered: "अंक प्रविष्ट केले",
     phoneNumberLabel: "फोन नंबर (10 अंक)",
     invalidPhone: "अवैध फोन नंबर",
