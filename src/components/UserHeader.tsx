@@ -139,9 +139,9 @@ export const UserHeader: React.FC = () => {
     }
   };
 
-  const userName = user ? (profile?.farmer_name || user.email?.split('@')[0] || 'User') : 'Guest User';
-  const phoneNumber = user ? (profile?.phone || 'No phone') : '+91 98765 43210';
-  const displayLocation = user ? (location || 'Location not set') : 'Punjabi Village, Punjab, India';
+  const userName = user ? (profile?.farmer_name || user.email?.split('@')[0] || t('guestUser')) : t('guestUser');
+  const phoneNumber = user ? (profile?.phone || t('noPhone')) : '+91 98765 43210';
+  const displayLocation = user ? (location || t('locationNotSet')) : t('locationNotSet');
 
   return (
     <div className="bg-gradient-nature text-white p-4 rounded-b-3xl shadow-medium">
