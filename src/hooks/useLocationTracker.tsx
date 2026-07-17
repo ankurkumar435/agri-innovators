@@ -44,8 +44,8 @@ export const useLocationTracker = () => {
           locationData.lat,
           locationData.lng
         );
-        // Only update if moved more than 100 meters
-        if (distance < 0.1) return;
+        // Only update if moved more than 50 meters
+        if (distance < 0.05) return;
       }
 
       const { city, region, country } = await fetchLocationDetails(locationData.lat, locationData.lng);
@@ -88,7 +88,7 @@ export const useLocationTracker = () => {
         });
       },
       (error) => console.error('Initial position error:', error),
-      { enableHighAccuracy: true }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
 
     // Watch for position changes
@@ -100,10 +100,10 @@ export const useLocationTracker = () => {
         });
       },
       (error) => console.error('Watch position error:', error),
-      { 
+      {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000 // Cache position for 1 minute
+        timeout: 15000,
+        maximumAge: 0
       }
     );
   }, [user, updateLocationInDatabase]);

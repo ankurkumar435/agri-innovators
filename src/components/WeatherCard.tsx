@@ -144,10 +144,12 @@ export const WeatherCard: React.FC = () => {
         setWeatherData(data);
         saveToCache(data); // Cache the weather data
         setCurrentCoords({ lat, lon });
-        if (data.location) {
-          setLocationName(`${data.location.name}, ${data.location.country}`);
-        } else if (locationText) {
+        // Prefer the stored/user-facing location text so the header and
+        // weather card always show the same place name.
+        if (locationText && locationText.trim()) {
           setLocationName(locationText);
+        } else if (data.location) {
+          setLocationName(`${data.location.name}, ${data.location.country}`);
         }
 
         // Show toast for severe weather alerts
@@ -260,7 +262,7 @@ export const WeatherCard: React.FC = () => {
             await fetchWeatherForLocation(40.7128, -74.0060, 'New York, USA');
             setLoading(false);
           },
-          { timeout: 10000, enableHighAccuracy: true, maximumAge: 300000 }
+          { timeout: 15000, enableHighAccuracy: true, maximumAge: 0 }
         );
       } else {
         // Geolocation not available
@@ -326,7 +328,7 @@ export const WeatherCard: React.FC = () => {
             });
             setRefreshing(false);
           },
-          { enableHighAccuracy: true, timeout: 10000 }
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
         );
       }
     } catch (error) {
