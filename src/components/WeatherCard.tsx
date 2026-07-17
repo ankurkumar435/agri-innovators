@@ -262,7 +262,7 @@ export const WeatherCard: React.FC = () => {
             await fetchWeatherForLocation(40.7128, -74.0060, 'New York, USA');
             setLoading(false);
           },
-          { timeout: 10000, enableHighAccuracy: true, maximumAge: 300000 }
+          { timeout: 15000, enableHighAccuracy: true, maximumAge: 0 }
         );
       } else {
         // Geolocation not available
