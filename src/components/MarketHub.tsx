@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useNotificationPrefs } from '@/hooks/useNotificationPrefs';
 
 interface PriceHistory {
   date: string;
