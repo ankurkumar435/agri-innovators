@@ -1,6 +1,10 @@
 import React, { lazy, Suspense } from 'react';
 import { User } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { useNotificationPrefs } from '@/hooks/useNotificationPrefs';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useToast } from '@/hooks/use-toast';
 
 // Lazy load heavy tab components
 const ChatBot = lazy(() => import('@/components/ChatBot').then(m => ({ default: m.ChatBot })));
