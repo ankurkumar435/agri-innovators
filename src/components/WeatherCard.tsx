@@ -8,6 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useOfflineCache, getCacheAge } from '@/hooks/useOfflineCache';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useNotificationPrefs, getNotificationPrefs } from '@/hooks/useNotificationPrefs';
 
 interface WeatherAlert {
   type: 'warning' | 'watch' | 'advisory';
