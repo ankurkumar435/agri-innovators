@@ -53,6 +53,7 @@ export const WeatherCard: React.FC = () => {
   const { isOnline } = useOnlineStatus();
   const { cachedData, isFromCache, saveToCache } = useOfflineCache<WeatherData>('weather_data', { expirationMinutes: 60 });
   const { t } = useLanguage();
+  const { prefs } = useNotificationPrefs();
 
   // Get weather icon component based on condition
   const getWeatherIcon = (condition: string) => {
