@@ -144,10 +144,12 @@ export const WeatherCard: React.FC = () => {
         setWeatherData(data);
         saveToCache(data); // Cache the weather data
         setCurrentCoords({ lat, lon });
-        if (data.location) {
-          setLocationName(`${data.location.name}, ${data.location.country}`);
-        } else if (locationText) {
+        // Prefer the stored/user-facing location text so the header and
+        // weather card always show the same place name.
+        if (locationText && locationText.trim()) {
           setLocationName(locationText);
+        } else if (data.location) {
+          setLocationName(`${data.location.name}, ${data.location.country}`);
         }
 
         // Show toast for severe weather alerts
