@@ -25,6 +25,18 @@ interface ContentSectionProps {
 }
 
 export const ContentSection: React.FC<ContentSectionProps> = ({ activeTab }) => {
+  const { prefs, update } = useNotificationPrefs();
+  const { t } = useLanguage();
+  const { toast } = useToast();
+
+  const togglePref = (key: 'weatherAlerts' | 'marketUpdates' | 'pestWarnings', value: boolean) => {
+    update({ [key]: value });
+    toast({
+      title: value ? t('notificationsEnabled') || 'Notifications enabled' : t('notificationsDisabled') || 'Notifications disabled',
+      description: t(key) || key,
+    });
+  };
+
   const getContent = () => {
     switch (activeTab) {
       case 'market':
