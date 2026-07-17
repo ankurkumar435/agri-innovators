@@ -108,6 +108,20 @@ export const MarketHub: React.FC = () => {
 
       setMarketData(data);
 
+      // Market update notifications: flag biggest mover if pref enabled
+      if (prefs.marketUpdates && data?.crops?.length) {
+        const biggest = [...data.crops].sort(
+          (a: CropPrice, b: CropPrice) => Math.abs(b.change) - Math.abs(a.change)
+        )[0];
+        if (biggest && Math.abs(biggest.change) >= 5) {
+          const dir = biggest.trend === 'up' ? '📈' : '📉';
+          toast({
+            title: `${dir} ${biggest.name} ${biggest.change > 0 ? '+' : ''}${biggest.change}%`,
+            description: `${formatPrice(biggest.price)} / ${biggest.unit} — ${biggest.market}`,
+          });
+        }
+      }
+
       if (showRefreshToast) {
         toast({
           title: "Prices Updated",
