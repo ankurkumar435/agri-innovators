@@ -8,6 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useOfflineCache, getCacheAge } from '@/hooks/useOfflineCache';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useNotificationPrefs, getNotificationPrefs } from '@/hooks/useNotificationPrefs';
 
 interface WeatherAlert {
   type: 'warning' | 'watch' | 'advisory';
@@ -52,6 +53,7 @@ export const WeatherCard: React.FC = () => {
   const { isOnline } = useOnlineStatus();
   const { cachedData, isFromCache, saveToCache } = useOfflineCache<WeatherData>('weather_data', { expirationMinutes: 60 });
   const { t } = useLanguage();
+  const { prefs } = useNotificationPrefs();
 
   // Get weather icon component based on condition
   const getWeatherIcon = (condition: string) => {
@@ -141,8 +143,43 @@ export const WeatherCard: React.FC = () => {
       }
 
       if (data) {
-        setWeatherData(data);
-        saveToCache(data); // Cache the weather data
+        // Derive pest-risk alerts from current conditions (fungal / locust / aphid risk)
+        const pestAlerts: WeatherAlert[] = [];
+        const tCur = Number(data.current?.temp ?? 0);
+        const hCur = Number(data.current?.humidity ?? 0);
+        const wCur = Number(data.current?.windSpeed ?? 0);
+        if (hCur >= 80 && tCur >= 20 && tCur <= 32) {
+          pestAlerts.push({
+            type: 'advisory',
+            severity: 'moderate',
+            title: 'Fungal Disease Risk',
+            description: `High humidity (${hCur}%) and mild temperature (${tCur}°C) favor fungal infections like blight and rust. Scout crops and consider preventive spray.`,
+            icon: 'fog',
+          });
+        }
+        if (hCur <= 45 && tCur >= 28 && wCur <= 15) {
+          pestAlerts.push({
+            type: 'advisory',
+            severity: 'moderate',
+            title: 'Aphid & Mite Risk',
+            description: `Warm, dry, calm conditions favor aphid and mite outbreaks. Inspect leaf undersides and act early.`,
+            icon: 'heat',
+          });
+        }
+        if (tCur >= 25 && tCur <= 35 && wCur >= 10) {
+          pestAlerts.push({
+            type: 'advisory',
+            severity: 'minor',
+            title: 'Locust / Flying Pest Watch',
+            description: `Warm winds can carry migratory pests. Monitor field edges and traps.`,
+            icon: 'wind',
+          });
+        }
+        const mergedAlerts = [...(data.alerts || []), ...pestAlerts];
+        const enriched = { ...data, alerts: mergedAlerts };
+
+        setWeatherData(enriched);
+        saveToCache(enriched); // Cache the weather data
         setCurrentCoords({ lat, lon });
         // Prefer the stored/user-facing location text so the header and
         // weather card always show the same place name.
@@ -152,8 +189,8 @@ export const WeatherCard: React.FC = () => {
           setLocationName(`${data.location.name}, ${data.location.country}`);
         }
 
-        // Show toast for severe weather alerts
-        if (data.alerts && data.alerts.length > 0) {
+        // Show toast for severe weather alerts (respect user preference)
+        if (prefs.weatherAlerts && data.alerts && data.alerts.length > 0) {
           const severeAlerts = data.alerts.filter(
             (a: WeatherAlert) => a.severity === 'extreme' || a.severity === 'severe'
           );
@@ -164,6 +201,14 @@ export const WeatherCard: React.FC = () => {
               variant: 'destructive',
             });
           }
+        }
+
+        // Toast for pest warnings (respect user preference)
+        if (getNotificationPrefs().pestWarnings && pestAlerts.length > 0) {
+          toast({
+            title: `🐛 ${pestAlerts[0].title}`,
+            description: pestAlerts[0].description,
+          });
         }
       }
     } catch (error) {
@@ -189,7 +234,7 @@ export const WeatherCard: React.FC = () => {
         });
       }
     }
-  }, [toast, isOnline, saveToCache]);
+  }, [toast, isOnline, saveToCache, prefs.weatherAlerts]);
 
   const fetchWeatherData = useCallback(async () => {
     try {

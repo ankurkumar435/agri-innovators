@@ -1,6 +1,10 @@
 import React, { lazy, Suspense } from 'react';
 import { User } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { useNotificationPrefs } from '@/hooks/useNotificationPrefs';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useToast } from '@/hooks/use-toast';
 
 // Lazy load heavy tab components
 const ChatBot = lazy(() => import('@/components/ChatBot').then(m => ({ default: m.ChatBot })));
@@ -21,6 +25,18 @@ interface ContentSectionProps {
 }
 
 export const ContentSection: React.FC<ContentSectionProps> = ({ activeTab }) => {
+  const { prefs, update } = useNotificationPrefs();
+  const { t } = useLanguage();
+  const { toast } = useToast();
+
+  const togglePref = (key: 'weatherAlerts' | 'marketUpdates' | 'pestWarnings', value: boolean) => {
+    update({ [key]: value });
+    toast({
+      title: value ? t('notificationsEnabled') || 'Notifications enabled' : t('notificationsDisabled') || 'Notifications disabled',
+      description: t(key) || key,
+    });
+  };
+
   const getContent = () => {
     switch (activeTab) {
       case 'market':
@@ -75,25 +91,28 @@ export const ContentSection: React.FC<ContentSectionProps> = ({ activeTab }) => 
             </Card>
 
             <Card className="p-4">
-              <h3 className="font-semibold mb-3 text-foreground">Settings</h3>
-              <div className="space-y-3">
+              <h3 className="font-semibold mb-3 text-foreground">{t('settings') || 'Settings'}</h3>
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Weather Alerts</span>
-                  <div className="w-10 h-6 bg-primary rounded-full relative">
-                    <div className="w-4 h-4 bg-white rounded-full absolute top-1 right-1"></div>
-                  </div>
+                  <span className="text-sm">{t('weatherAlerts') || 'Weather Alerts'}</span>
+                  <Switch
+                    checked={prefs.weatherAlerts}
+                    onCheckedChange={(v) => togglePref('weatherAlerts', v)}
+                  />
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Market Updates</span>
-                  <div className="w-10 h-6 bg-primary rounded-full relative">
-                    <div className="w-4 h-4 bg-white rounded-full absolute top-1 right-1"></div>
-                  </div>
+                  <span className="text-sm">{t('marketUpdates') || 'Market Updates'}</span>
+                  <Switch
+                    checked={prefs.marketUpdates}
+                    onCheckedChange={(v) => togglePref('marketUpdates', v)}
+                  />
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Pest Warnings</span>
-                  <div className="w-10 h-6 bg-muted rounded-full relative">
-                    <div className="w-4 h-4 bg-white rounded-full absolute top-1 left-1"></div>
-                  </div>
+                  <span className="text-sm">{t('pestWarnings') || 'Pest Warnings'}</span>
+                  <Switch
+                    checked={prefs.pestWarnings}
+                    onCheckedChange={(v) => togglePref('pestWarnings', v)}
+                  />
                 </div>
               </div>
             </Card>
