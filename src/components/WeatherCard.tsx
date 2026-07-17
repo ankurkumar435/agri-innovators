@@ -234,7 +234,7 @@ export const WeatherCard: React.FC = () => {
         });
       }
     }
-  }, [toast, isOnline, saveToCache]);
+  }, [toast, isOnline, saveToCache, prefs.weatherAlerts]);
 
   const fetchWeatherData = useCallback(async () => {
     try {
