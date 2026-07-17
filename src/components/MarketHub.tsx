@@ -71,6 +71,7 @@ export const MarketHub: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { t } = useLanguage();
+  const { prefs } = useNotificationPrefs();
 
   const fetchMarketPrices = async (showRefreshToast = false) => {
     try {
