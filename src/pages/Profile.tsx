@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import NotificationSettings from '@/components/NotificationSettings';
+import { MyFieldsCard } from '@/components/MyFieldsCard';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -331,6 +332,9 @@ const Profile = () => {
             )}
           </div>
         </Card>
+
+        {/* My Fields */}
+        <MyFieldsCard />
 
         {/* Password Management */}
         <Card className="p-4 space-y-3">

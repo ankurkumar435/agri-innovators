@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { X, Mountain, Droplets, Leaf, FlaskConical, RefreshCw, AlertTriangle, CheckCircle, AlertCircle, Info } from 'lucide-react';
+import { X, Mountain, Droplets, Leaf, FlaskConical, RefreshCw, AlertTriangle, CheckCircle, AlertCircle, Info, MapPin } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useFarmerFields } from '@/hooks/useFarmerFields';
 
 interface SoilConditionsModalProps {
   isOpen: boolean;
