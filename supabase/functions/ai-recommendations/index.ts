@@ -20,6 +20,14 @@ const bodySchema = z.object({
     temperature: z.number().optional(),
     condition: z.string().max(100).optional(),
   }).optional(),
+  fields: z.array(z.object({
+    name: z.string().max(200).optional(),
+    area_acres: z.number().optional(),
+    crop: z.string().max(100).nullable().optional(),
+    growth_stage: z.string().max(100).nullable().optional(),
+    sowing_date: z.string().max(50).nullable().optional(),
+    expected_harvest_date: z.string().max(50).nullable().optional(),
+  })).max(50).optional(),
 });
 
 serve(async (req) => {
