@@ -53,6 +53,57 @@ export type Database = {
         }
         Relationships: []
       }
+      farmer_fields: {
+        Row: {
+          area_acres: number
+          center_lat: number
+          center_lng: number
+          created_at: string
+          crop: string | null
+          expected_harvest_date: string | null
+          growth_stage: string | null
+          id: string
+          name: string
+          notes: string | null
+          polygon: Json
+          sowing_date: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          area_acres?: number
+          center_lat: number
+          center_lng: number
+          created_at?: string
+          crop?: string | null
+          expected_harvest_date?: string | null
+          growth_stage?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          polygon: Json
+          sowing_date?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          area_acres?: number
+          center_lat?: number
+          center_lng?: number
+          created_at?: string
+          crop?: string | null
+          expected_harvest_date?: string | null
+          growth_stage?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          polygon?: Json
+          sowing_date?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string

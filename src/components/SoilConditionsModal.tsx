@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { X, Mountain, Droplets, Leaf, FlaskConical, RefreshCw, AlertTriangle, CheckCircle, AlertCircle, Info } from 'lucide-react';
+import { X, Mountain, Droplets, Leaf, FlaskConical, RefreshCw, AlertTriangle, CheckCircle, AlertCircle, Info, MapPin } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useFarmerFields } from '@/hooks/useFarmerFields';
 
 interface SoilConditionsModalProps {
   isOpen: boolean;
@@ -70,36 +72,45 @@ export const SoilConditionsModal: React.FC<SoilConditionsModalProps> = ({ isOpen
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  const { fields } = useFarmerFields();
+  const [selectedFieldId, setSelectedFieldId] = useState<string>('current');
 
-  const fetchSoilData = async () => {
+  const fetchSoilData = async (fieldId: string = selectedFieldId) => {
     if (!user) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      // Get user's location
-      const { data: locationData, error: locationError } = await supabase
-        .from('user_locations')
-        .select('latitude, longitude, city, region, country')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      let state = 'Maharashtra';
+      let city = 'Mumbai';
+      let latitude = 19.076;
+      let longitude = 72.877;
 
-      if (locationError) throw locationError;
-
-      const state = locationData?.region || 'Maharashtra';
-      const city = locationData?.city || 'Mumbai';
-      const latitude = locationData?.latitude || 19.076;
-      const longitude = locationData?.longitude || 72.877;
+      const field = fields.find((f) => f.id === fieldId);
+      if (field) {
+        latitude = Number(field.center_lat);
+        longitude = Number(field.center_lng);
+        city = field.name;
+      } else {
+        const { data: locationData } = await supabase
+          .from('user_locations')
+          .select('latitude, longitude, city, region, country')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        state = locationData?.region || state;
+        city = locationData?.city || city;
+        latitude = Number(locationData?.latitude ?? latitude);
+        longitude = Number(locationData?.longitude ?? longitude);
+      }
 
       const { data, error: fetchError } = await supabase.functions.invoke('soil-conditions', {
         body: { state, city, latitude, longitude }
       });
 
       if (fetchError) throw fetchError;
-      
       setSoilData(data);
     } catch (err: any) {
       console.error('Error fetching soil data:', err);
@@ -111,9 +122,10 @@ export const SoilConditionsModal: React.FC<SoilConditionsModalProps> = ({ isOpen
 
   useEffect(() => {
     if (isOpen) {
-      fetchSoilData();
+      fetchSoilData(selectedFieldId);
     }
-  }, [isOpen, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, selectedFieldId, user]);
 
   if (!isOpen) return null;
 
@@ -179,7 +191,7 @@ export const SoilConditionsModal: React.FC<SoilConditionsModalProps> = ({ isOpen
             <Button
               variant="ghost"
               size="icon"
-              onClick={fetchSoilData}
+              onClick={() => fetchSoilData()}
               disabled={loading}
               className="text-white hover:bg-white/20"
             >
@@ -210,11 +222,37 @@ export const SoilConditionsModal: React.FC<SoilConditionsModalProps> = ({ isOpen
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <AlertTriangle className="w-12 h-12 text-destructive mb-4" />
               <p className="text-destructive font-medium">{error}</p>
-              <Button onClick={fetchSoilData} className="mt-4">
+              <Button onClick={() => fetchSoilData()} className="mt-4">
                 Try Again
               </Button>
             </div>
           )}
+
+          {/* Field selector */}
+          <Card className="p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <MapPin className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium">Analyze soil for</span>
+            </div>
+            <Select value={selectedFieldId} onValueChange={setSelectedFieldId}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="current">My current location (GPS)</SelectItem>
+                {fields.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>
+                    {f.name} ({Number(f.area_acres).toFixed(2)} ac{f.crop ? ` · ${f.crop}` : ''})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {fields.length === 0 && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Tip: Add fields in Profile to get soil data specific to each field.
+              </p>
+            )}
+          </Card>
+
+
 
           {soilData && !loading && (
             <>
