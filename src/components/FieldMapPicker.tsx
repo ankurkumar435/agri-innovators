@@ -181,10 +181,19 @@ export const FieldMapPicker: React.FC<FieldMapPickerProps> = ({ initialPolygon, 
     );
   }
 
+  const liveAcres = computePolygonAreaAcres(livePolygon);
+
   return (
     <div className="space-y-2">
       <div className="relative rounded-lg overflow-hidden border border-border" style={{ height: 360 }}>
         <div ref={mapEl} className="w-full h-full" />
+        {ready && vertexCount >= 3 && (
+          <div className="absolute top-2 left-2 bg-background/95 backdrop-blur-sm rounded-md shadow-md px-3 py-1.5 flex items-center gap-2 border border-border pointer-events-none">
+            <Ruler className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold text-foreground">{liveAcres.toFixed(2)} acres</span>
+            <span className="text-xs text-muted-foreground">· {vertexCount} pts</span>
+          </div>
+        )}
         {!ready && !error && (
           <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
             <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent" />
@@ -205,7 +214,7 @@ export const FieldMapPicker: React.FC<FieldMapPickerProps> = ({ initialPolygon, 
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        Tap points on the satellite map to outline your field. Drag vertices to adjust.
+        Tap the map to outline your field. Drag any vertex to refine, drag the middle handle between two vertices to add a new point, drag the whole shape to reposition, or right-click a vertex to remove it. Acres update live.
       </p>
     </div>
   );
