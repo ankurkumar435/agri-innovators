@@ -52,10 +52,10 @@ const Auth = () => {
   });
 
   useEffect(() => {
-    if (user) {
+    if (user && !showFieldSetup && !showOtp) {
       navigate('/');
     }
-  }, [user, navigate]);
+  }, [user, navigate, showFieldSetup, showOtp]);
 
   useEffect(() => {
     if (resendCooldown > 0) {
