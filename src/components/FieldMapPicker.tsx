@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Trash2, MapPin } from 'lucide-react';
+import { Trash2, MapPin, Ruler } from 'lucide-react';
+import { computePolygonAreaAcres } from '@/hooks/useFarmerFields';
 
 interface LatLng { lat: number; lng: number }
 
