@@ -36,6 +36,8 @@ export const FieldMapPicker: React.FC<FieldMapPickerProps> = ({ initialPolygon, 
   const drawingMgrRef = useRef<any>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [livePolygon, setLivePolygon] = useState<LatLng[]>(initialPolygon || []);
+  const [vertexCount, setVertexCount] = useState<number>(initialPolygon?.length || 0);
 
   useEffect(() => {
     let cancelled = false;
