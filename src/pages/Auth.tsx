@@ -191,12 +191,59 @@ const Auth = () => {
       if (error) throw error;
 
       toast({ title: t('accountVerified'), description: t('welcomeSmartFarming') });
-      navigate('/');
+      setShowOtp(false);
+      setShowFieldSetup(true);
     } catch (error: any) {
       toast({ title: t('verificationFailed'), description: error.message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSaveField = async () => {
+    if (!user) {
+      toast({ title: 'Please wait', description: 'Finalizing your account…' });
+      return;
+    }
+    if (fieldPolygon.length < 3) {
+      toast({ title: 'Draw your field', description: 'Outline your field on the satellite map before saving.', variant: 'destructive' });
+      return;
+    }
+    if (!fieldName.trim()) {
+      toast({ title: 'Enter a field name', variant: 'destructive' });
+      return;
+    }
+    setLoading(true);
+    try {
+      const center = computeCentroid(fieldPolygon);
+      const area = computePolygonAreaAcres(fieldPolygon);
+      const { error } = await supabase.from('farmer_fields').insert({
+        user_id: user.id,
+        name: fieldName.trim(),
+        polygon: fieldPolygon as any,
+        area_acres: Number(area.toFixed(3)),
+        center_lat: center.lat,
+        center_lng: center.lng,
+        crop: fieldCrop || null,
+        growth_stage: fieldStage || null,
+        sowing_date: fieldSowingDate || null,
+        expected_harvest_date: fieldHarvestDate || null,
+        notes: fieldNotes || null,
+      });
+      if (error) throw error;
+      toast({ title: 'Field saved', description: 'Recommendations will now be tailored to your field.' });
+      setShowFieldSetup(false);
+      navigate('/');
+    } catch (err: any) {
+      toast({ title: 'Could not save field', description: err.message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const skipFieldSetup = () => {
+    setShowFieldSetup(false);
+    navigate('/');
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
