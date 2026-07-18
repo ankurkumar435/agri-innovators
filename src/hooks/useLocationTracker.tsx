@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { isFieldLocationPinned } from '@/hooks/useActiveLocation';
 
 interface LocationData {
   lat: number;
