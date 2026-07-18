@@ -228,6 +228,32 @@ export const SoilConditionsModal: React.FC<SoilConditionsModalProps> = ({ isOpen
             </div>
           )}
 
+          {/* Field selector */}
+          <Card className="p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <MapPin className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium">Analyze soil for</span>
+            </div>
+            <Select value={selectedFieldId} onValueChange={setSelectedFieldId}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="current">My current location (GPS)</SelectItem>
+                {fields.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>
+                    {f.name} ({Number(f.area_acres).toFixed(2)} ac{f.crop ? ` · ${f.crop}` : ''})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {fields.length === 0 && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Tip: Add fields in Profile to get soil data specific to each field.
+              </p>
+            )}
+          </Card>
+
+
+
           {soilData && !loading && (
             <>
               {/* Location Info */}
