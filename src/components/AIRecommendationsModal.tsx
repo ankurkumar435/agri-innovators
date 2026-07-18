@@ -54,6 +54,12 @@ export const AIRecommendationsModal: React.FC<AIRecommendationsModalProps> = ({ 
 
       const crops = yieldsData?.map(y => y.crop_type) || [];
 
+      // Get user's mapped fields (crop, growth stage, area)
+      const { data: fieldsData } = await supabase
+        .from('farmer_fields')
+        .select('name, area_acres, crop, growth_stage, sowing_date, expected_harvest_date')
+        .eq('user_id', user?.id);
+
       // Fetch current weather if location available
       let weatherData = null;
       if (locationData?.latitude && locationData?.longitude) {
@@ -77,7 +83,15 @@ export const AIRecommendationsModal: React.FC<AIRecommendationsModalProps> = ({ 
         body: {
           location: locationData,
           crops: crops,
-          weather: weatherData
+          weather: weatherData,
+          fields: (fieldsData || []).map((f: any) => ({
+            name: f.name,
+            area_acres: Number(f.area_acres),
+            crop: f.crop,
+            growth_stage: f.growth_stage,
+            sowing_date: f.sowing_date,
+            expected_harvest_date: f.expected_harvest_date,
+          })),
         }
       });
 
