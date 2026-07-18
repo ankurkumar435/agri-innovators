@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { isFieldLocationPinned } from '@/hooks/useActiveLocation';
 
 interface LocationData {
   lat: number;
@@ -34,6 +35,8 @@ export const useLocationTracker = () => {
 
   const updateLocationInDatabase = useCallback(async (locationData: LocationData) => {
     if (!user) return;
+    // Respect the user's pinned field location — do not overwrite it with GPS.
+    if (isFieldLocationPinned()) return;
 
     try {
       // Check if location has changed significantly (more than 100 meters)
