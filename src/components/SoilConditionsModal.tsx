@@ -191,7 +191,7 @@ export const SoilConditionsModal: React.FC<SoilConditionsModalProps> = ({ isOpen
             <Button
               variant="ghost"
               size="icon"
-              onClick={fetchSoilData}
+              onClick={() => fetchSoilData()}
               disabled={loading}
               className="text-white hover:bg-white/20"
             >
@@ -222,7 +222,7 @@ export const SoilConditionsModal: React.FC<SoilConditionsModalProps> = ({ isOpen
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <AlertTriangle className="w-12 h-12 text-destructive mb-4" />
               <p className="text-destructive font-medium">{error}</p>
-              <Button onClick={fetchSoilData} className="mt-4">
+              <Button onClick={() => fetchSoilData()} className="mt-4">
                 Try Again
               </Button>
             </div>
