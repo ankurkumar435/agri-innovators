@@ -35,6 +35,8 @@ export const useLocationTracker = () => {
 
   const updateLocationInDatabase = useCallback(async (locationData: LocationData) => {
     if (!user) return;
+    // Respect the user's pinned field location — do not overwrite it with GPS.
+    if (isFieldLocationPinned()) return;
 
     try {
       // Check if location has changed significantly (more than 100 meters)
