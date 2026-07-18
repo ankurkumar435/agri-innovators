@@ -11,6 +11,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { ArrowLeft, MapPin } from 'lucide-react';
+import { FieldMapPicker } from '@/components/FieldMapPicker';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { COMMON_CROPS, GROWTH_STAGES, computeCentroid, computePolygonAreaAcres } from '@/hooks/useFarmerFields';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -24,6 +28,14 @@ const Auth = () => {
   const [otpValue, setOtpValue] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [showFieldSetup, setShowFieldSetup] = useState(false);
+  const [fieldPolygon, setFieldPolygon] = useState<{ lat: number; lng: number }[]>([]);
+  const [fieldName, setFieldName] = useState('');
+  const [fieldCrop, setFieldCrop] = useState('');
+  const [fieldStage, setFieldStage] = useState('');
+  const [fieldSowingDate, setFieldSowingDate] = useState('');
+  const [fieldHarvestDate, setFieldHarvestDate] = useState('');
+  const [fieldNotes, setFieldNotes] = useState('');
 
   const [signUpData, setSignUpData] = useState({
     firstName: '',
@@ -40,10 +52,10 @@ const Auth = () => {
   });
 
   useEffect(() => {
-    if (user) {
+    if (user && !showFieldSetup && !showOtp) {
       navigate('/');
     }
-  }, [user, navigate]);
+  }, [user, navigate, showFieldSetup, showOtp]);
 
   useEffect(() => {
     if (resendCooldown > 0) {
@@ -179,12 +191,59 @@ const Auth = () => {
       if (error) throw error;
 
       toast({ title: t('accountVerified'), description: t('welcomeSmartFarming') });
-      navigate('/');
+      setShowOtp(false);
+      setShowFieldSetup(true);
     } catch (error: any) {
       toast({ title: t('verificationFailed'), description: error.message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSaveField = async () => {
+    if (!user) {
+      toast({ title: 'Please wait', description: 'Finalizing your account…' });
+      return;
+    }
+    if (fieldPolygon.length < 3) {
+      toast({ title: 'Draw your field', description: 'Outline your field on the satellite map before saving.', variant: 'destructive' });
+      return;
+    }
+    if (!fieldName.trim()) {
+      toast({ title: 'Enter a field name', variant: 'destructive' });
+      return;
+    }
+    setLoading(true);
+    try {
+      const center = computeCentroid(fieldPolygon);
+      const area = computePolygonAreaAcres(fieldPolygon);
+      const { error } = await supabase.from('farmer_fields').insert({
+        user_id: user.id,
+        name: fieldName.trim(),
+        polygon: fieldPolygon as any,
+        area_acres: Number(area.toFixed(3)),
+        center_lat: center.lat,
+        center_lng: center.lng,
+        crop: fieldCrop || null,
+        growth_stage: fieldStage || null,
+        sowing_date: fieldSowingDate || null,
+        expected_harvest_date: fieldHarvestDate || null,
+        notes: fieldNotes || null,
+      });
+      if (error) throw error;
+      toast({ title: 'Field saved', description: 'Recommendations will now be tailored to your field.' });
+      setShowFieldSetup(false);
+      navigate('/');
+    } catch (err: any) {
+      toast({ title: 'Could not save field', description: err.message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const skipFieldSetup = () => {
+    setShowFieldSetup(false);
+    navigate('/');
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -207,6 +266,81 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
+  if (showFieldSetup) {
+    const area = computePolygonAreaAcres(fieldPolygon);
+    return (
+      <div className="min-h-screen bg-gradient-nature flex flex-col">
+        <div className="p-4 flex items-center justify-between">
+          <h2 className="text-white font-semibold">Map your field</h2>
+          <Button variant="ghost" onClick={skipFieldSetup} className="text-white hover:bg-white/20">
+            Skip for now
+          </Button>
+        </div>
+        <div className="flex-1 flex items-start justify-center p-4">
+          <Card className="w-full max-w-2xl">
+            <CardHeader>
+              <CardTitle className="text-xl text-primary">Outline your field on the satellite map</CardTitle>
+              <CardDescription>
+                This lets us tailor soil analysis, weather alerts, pest warnings and AI recommendations to your exact field, crop and growth stage.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FieldMapPicker onChange={setFieldPolygon} />
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2 space-y-1">
+                  <Label>Field name</Label>
+                  <Input value={fieldName} onChange={(e) => setFieldName(e.target.value)} placeholder="e.g. North field" />
+                </div>
+                <div className="space-y-1">
+                  <Label>Crop</Label>
+                  <Select value={fieldCrop} onValueChange={setFieldCrop}>
+                    <SelectTrigger><SelectValue placeholder="Select crop" /></SelectTrigger>
+                    <SelectContent>
+                      {COMMON_CROPS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Growth stage</Label>
+                  <Select value={fieldStage} onValueChange={setFieldStage}>
+                    <SelectTrigger><SelectValue placeholder="Select stage" /></SelectTrigger>
+                    <SelectContent>
+                      {GROWTH_STAGES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Sowing date</Label>
+                  <Input type="date" value={fieldSowingDate} onChange={(e) => setFieldSowingDate(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Expected harvest</Label>
+                  <Input type="date" value={fieldHarvestDate} onChange={(e) => setFieldHarvestDate(e.target.value)} />
+                </div>
+                <div className="col-span-2 space-y-1">
+                  <Label>Notes (optional)</Label>
+                  <Textarea rows={2} value={fieldNotes} onChange={(e) => setFieldNotes(e.target.value)} />
+                </div>
+                <div className="col-span-2 flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                  <span className="text-sm text-muted-foreground">Calculated area</span>
+                  <span className="font-semibold">{area.toFixed(2)} acres</span>
+                </div>
+              </div>
+
+              <div className="flex gap-2 justify-end">
+                <Button variant="ghost" onClick={skipFieldSetup}>Skip</Button>
+                <Button onClick={handleSaveField} disabled={loading}>
+                  {loading ? 'Saving…' : 'Save field & continue'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   if (showOtp) {
     return (

@@ -20,6 +20,14 @@ const bodySchema = z.object({
     temperature: z.number().optional(),
     condition: z.string().max(100).optional(),
   }).optional(),
+  fields: z.array(z.object({
+    name: z.string().max(200).optional(),
+    area_acres: z.number().optional(),
+    crop: z.string().max(100).nullable().optional(),
+    growth_stage: z.string().max(100).nullable().optional(),
+    sowing_date: z.string().max(50).nullable().optional(),
+    expected_harvest_date: z.string().max(50).nullable().optional(),
+  })).max(50).optional(),
 });
 
 serve(async (req) => {
@@ -61,7 +69,7 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    const { location, crops, weather } = parsed.data;
+    const { location, crops, weather, fields } = parsed.data;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -81,10 +89,11 @@ serve(async (req) => {
     const systemPrompt = `You are an expert agricultural advisor for Indian farmers. Generate personalized farming recommendations based on the provided data.
 
 IMPORTANT RULES:
-- Provide exactly 4-5 actionable recommendations
+- Provide exactly 4-6 actionable recommendations
 - Each recommendation must be bilingual (English + Hindi)
-- Consider current season (${currentSeason}), month (${currentMonth}), location, and crops
-- Categories: Weather Alert, Crop Management, Pest Control, Market Insight, Soil Health
+- Consider current season (${currentSeason}), month (${currentMonth}), location, and specific FIELDS with crops, growth stages, and area
+- Tailor advice per field: dosage/irrigation should reference the field's acreage; timing should reference growth stage
+- Categories: Weather Alert, Crop Management, Pest Control, Market Insight, Soil Health, Field-Specific
 - Priorities: high (urgent action needed), medium (plan this week), low (general advice)
 - Keep descriptions concise but practical
 
@@ -102,15 +111,21 @@ Return ONLY valid JSON array with this exact structure:
   }
 ]`;
 
+    const fieldsText = fields && fields.length > 0
+      ? fields.map((f, i) => `  ${i + 1}. ${f.name || 'Field'} — ${f.area_acres ?? '?'} acres — Crop: ${f.crop || 'N/A'} — Stage: ${f.growth_stage || 'N/A'}${f.sowing_date ? ` — Sown: ${f.sowing_date}` : ''}${f.expected_harvest_date ? ` — Harvest: ${f.expected_harvest_date}` : ''}`).join('\n')
+      : '  (no mapped fields)';
+
     const userPrompt = `Generate farming recommendations for:
 - Location: ${location?.city || 'India'}, ${location?.region || ''}
 - Coordinates: ${location?.latitude || 'N/A'}, ${location?.longitude || 'N/A'}
-- Current crops: ${crops?.length ? crops.join(', ') : 'Not specified'}
 - Weather: ${weather ? `${weather.temperature}°C, ${weather.condition}` : 'Not available'}
 - Current month: ${currentMonth}
 - Season: ${currentSeason}
+- Farmer's mapped fields:
+${fieldsText}
+- Other recorded crops: ${crops?.length ? crops.join(', ') : 'None'}
 
-Provide practical, location-specific recommendations considering local climate and market conditions.`;
+Provide practical, field-specific recommendations that reference each field's crop, growth stage and acreage where useful.`;
 
     console.log('Generating AI recommendations for:', { location: location?.city, crops, currentMonth });
 
