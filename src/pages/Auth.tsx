@@ -28,6 +28,14 @@ const Auth = () => {
   const [otpValue, setOtpValue] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [showFieldSetup, setShowFieldSetup] = useState(false);
+  const [fieldPolygon, setFieldPolygon] = useState<{ lat: number; lng: number }[]>([]);
+  const [fieldName, setFieldName] = useState('');
+  const [fieldCrop, setFieldCrop] = useState('');
+  const [fieldStage, setFieldStage] = useState('');
+  const [fieldSowingDate, setFieldSowingDate] = useState('');
+  const [fieldHarvestDate, setFieldHarvestDate] = useState('');
+  const [fieldNotes, setFieldNotes] = useState('');
 
   const [signUpData, setSignUpData] = useState({
     firstName: '',
