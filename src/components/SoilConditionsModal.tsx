@@ -72,36 +72,45 @@ export const SoilConditionsModal: React.FC<SoilConditionsModalProps> = ({ isOpen
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  const { fields } = useFarmerFields();
+  const [selectedFieldId, setSelectedFieldId] = useState<string>('current');
 
-  const fetchSoilData = async () => {
+  const fetchSoilData = async (fieldId: string = selectedFieldId) => {
     if (!user) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      // Get user's location
-      const { data: locationData, error: locationError } = await supabase
-        .from('user_locations')
-        .select('latitude, longitude, city, region, country')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      let state = 'Maharashtra';
+      let city = 'Mumbai';
+      let latitude = 19.076;
+      let longitude = 72.877;
 
-      if (locationError) throw locationError;
-
-      const state = locationData?.region || 'Maharashtra';
-      const city = locationData?.city || 'Mumbai';
-      const latitude = locationData?.latitude || 19.076;
-      const longitude = locationData?.longitude || 72.877;
+      const field = fields.find((f) => f.id === fieldId);
+      if (field) {
+        latitude = Number(field.center_lat);
+        longitude = Number(field.center_lng);
+        city = field.name;
+      } else {
+        const { data: locationData } = await supabase
+          .from('user_locations')
+          .select('latitude, longitude, city, region, country')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        state = locationData?.region || state;
+        city = locationData?.city || city;
+        latitude = Number(locationData?.latitude ?? latitude);
+        longitude = Number(locationData?.longitude ?? longitude);
+      }
 
       const { data, error: fetchError } = await supabase.functions.invoke('soil-conditions', {
         body: { state, city, latitude, longitude }
       });
 
       if (fetchError) throw fetchError;
-      
       setSoilData(data);
     } catch (err: any) {
       console.error('Error fetching soil data:', err);
@@ -113,9 +122,10 @@ export const SoilConditionsModal: React.FC<SoilConditionsModalProps> = ({ isOpen
 
   useEffect(() => {
     if (isOpen) {
-      fetchSoilData();
+      fetchSoilData(selectedFieldId);
     }
-  }, [isOpen, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, selectedFieldId, user]);
 
   if (!isOpen) return null;
 
