@@ -65,7 +65,7 @@ export const FieldMapPicker: React.FC<FieldMapPickerProps> = ({ initialPolygon, 
           const poly = new google.maps.Polygon({
             paths: path,
             editable: true,
-            draggable: false,
+            draggable: true,
             fillColor: '#22c55e',
             fillOpacity: 0.35,
             strokeColor: '#16a34a',
@@ -74,13 +74,27 @@ export const FieldMapPicker: React.FC<FieldMapPickerProps> = ({ initialPolygon, 
           poly.setMap(map);
           polygonRef.current = poly;
 
+          const readArr = () =>
+            poly.getPath().getArray().map((p: any) => ({ lat: p.lat(), lng: p.lng() }));
+
           const emit = () => {
-            const arr = poly.getPath().getArray().map((p: any) => ({ lat: p.lat(), lng: p.lng() }));
+            const arr = readArr();
+            setLivePolygon(arr);
+            setVertexCount(arr.length);
             onChange(arr);
           };
+          // Live updates while dragging a vertex or the whole polygon.
           google.maps.event.addListener(poly.getPath(), 'set_at', emit);
           google.maps.event.addListener(poly.getPath(), 'insert_at', emit);
           google.maps.event.addListener(poly.getPath(), 'remove_at', emit);
+          google.maps.event.addListener(poly, 'drag', emit);
+          google.maps.event.addListener(poly, 'dragend', emit);
+          // Right-click a vertex to remove it.
+          google.maps.event.addListener(poly, 'rightclick', (e: any) => {
+            if (e.vertex != null) {
+              poly.getPath().removeAt(e.vertex);
+            }
+          });
           emit();
         };
 
