@@ -428,7 +428,7 @@ export const CropScanner: React.FC = () => {
             
             {!result && !isAnalyzing && (
               <Button 
-                onClick={analyzeCrop}
+                onClick={() => setShowAnalyzeLangDialog(true)}
                 className="w-full"
                 size="lg"
               >
