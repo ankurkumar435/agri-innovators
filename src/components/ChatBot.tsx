@@ -171,7 +171,7 @@ export const ChatBot: React.FC = () => {
     }
 
     const result = await requestMicPermission();
-    if (!result.ok) {
+    if (result.ok === false) {
       toast({
         title: "Microphone unavailable",
         description: result.message,
