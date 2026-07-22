@@ -90,7 +90,7 @@ const Index = () => {
       <UserHeader />
 
       {activeTab === 'home' ? (
-        <div className="p-4 space-y-6 pb-20">
+        <div className="p-4 space-y-6 pb-nav">
           {/* Hero Section */}
           <div className="relative rounded-2xl overflow-hidden shadow-strong">
             <img 
