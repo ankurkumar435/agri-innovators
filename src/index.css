@@ -146,12 +146,41 @@
     scroll-behavior: smooth;
   }
 
+  /*
+   * iOS Safari: nested scroll areas can "bounce" the whole page, which
+   * momentarily shifts fixed elements (bottom nav, modals) and breaks layout.
+   * Trap the bounce inside any element that actually scrolls.
+   */
+  [class*="overflow-y-auto"],
+  [class*="overflow-y-scroll"],
+  [class*="overflow-x-auto"],
+  [class*="overflow-x-scroll"],
+  [class*="overflow-auto"],
+  [class*="overflow-scroll"] {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Radix ScrollArea viewport is a nested scroller too */
+  [data-radix-scroll-area-viewport] {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Dialog / Sheet / Drawer content commonly overflow on mobile */
+  [role="dialog"],
+  [data-radix-dialog-content],
+  [data-vaul-drawer] {
+    overscroll-behavior: contain;
+  }
+
   /* Respect reduced motion preferences */
   @media (prefers-reduced-motion: reduce) {
     html, body, .scroll-smooth-y, [data-scroll-container] {
       scroll-behavior: auto;
     }
   }
+
 
 
   /* Prevent iOS auto-zoom on focus by keeping form inputs at >=16px */
