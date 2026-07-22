@@ -198,8 +198,10 @@ export const CropScanner: React.FC = () => {
         img.src = event.target?.result as string;
       };
       reader.readAsDataURL(file);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
+
 
   const analyzeCrop = async (chosenLanguage: string) => {
     if (!imagePreview) return;
