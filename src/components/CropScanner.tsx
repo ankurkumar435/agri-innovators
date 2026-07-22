@@ -493,79 +493,92 @@ export const CropScanner: React.FC = () => {
                 </div>
               </Card>
 
-              {/* Plant Identification Card */}
-              <Card className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-full bg-primary/20">
-                    <Leaf className="w-6 h-6 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg text-foreground">Plant Identified</h3>
-                    <p className="text-xs text-muted-foreground mb-2">पौधे की पहचान</p>
-                    
-                    <div className="grid grid-cols-2 gap-4 mt-3">
-                      <div>
-                        <p className="text-xs text-muted-foreground">English</p>
-                        <p className="font-semibold text-foreground">{result.plantNameEnglish || 'Unknown'}</p>
+              {(() => {
+                const langMeta = LANG_OPTIONS.find(l => l.name === analysisLang) || LANG_OPTIONS[0];
+                const isEnglish = analysisLang === 'English';
+                const isHindi = analysisLang === 'Hindi';
+                const localPlant = isEnglish ? null : (isHindi ? result.plantNameHindi : (result.plantNameLocal || result.plantNameHindi));
+                const localDisease = isEnglish ? null : (isHindi ? result.diseaseHindi : (result.diseaseLocal || result.diseaseHindi));
+                const localTreatment = isEnglish ? null : (isHindi ? result.treatmentHindi : (result.treatmentLocal || result.treatmentHindi));
+                const localPrevention = isEnglish ? null : (isHindi ? result.preventionHindi : (result.preventionLocal || result.preventionHindi));
+                const localLabel = langMeta.native;
+                return (
+                  <>
+                    {/* Plant Identification Card */}
+                    <Card className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 rounded-full bg-primary/20">
+                          <Leaf className="w-6 h-6 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-lg text-foreground">Plant Identified</h3>
+                          <p className="text-xs text-muted-foreground mb-2">{isEnglish ? 'Plant identification' : localLabel}</p>
+
+                          <div className={`grid ${isEnglish ? 'grid-cols-1' : 'grid-cols-2'} gap-4 mt-3`}>
+                            <div>
+                              <p className="text-xs text-muted-foreground">English</p>
+                              <p className="font-semibold text-foreground">{result.plantNameEnglish || 'Unknown'}</p>
+                            </div>
+                            {!isEnglish && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">{localLabel}</p>
+                                <p className="font-semibold text-foreground">{localPlant || '—'}</p>
+                              </div>
+                            )}
+                          </div>
+
+                          {result.scientificName && result.scientificName !== 'N/A' && (
+                            <p className="text-xs text-muted-foreground mt-2 italic">
+                              Scientific: {result.scientificName}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">हिंदी</p>
-                        <p className="font-semibold text-foreground">{result.plantNameHindi || 'अज्ञात'}</p>
+                    </Card>
+
+                    {/* Disease Analysis Card */}
+                    <Card className="p-4 space-y-4">
+                      <div className="flex items-start gap-3">
+                        {result.severity === 'Healthy' ? (
+                          <CheckCircle className="w-6 h-6 text-success flex-shrink-0 mt-1" />
+                        ) : (
+                          <AlertCircle className="w-6 h-6 text-warning flex-shrink-0 mt-1" />
+                        )}
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-lg mb-1">{result.disease}</h3>
+                          {!isEnglish && localDisease && (
+                            <p className="text-sm text-muted-foreground mb-2">{localDisease}</p>
+                          )}
+                          <p className="text-sm text-muted-foreground mb-2">
+                            Confidence: {result.confidence}
+                          </p>
+                          <div className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                            result.severity === 'Healthy'
+                              ? 'bg-success/10 text-success'
+                              : result.severity === 'Mild'
+                              ? 'bg-warning/10 text-warning'
+                              : 'bg-destructive/10 text-destructive'
+                          }`}>
+                            {result.severity}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    
-                    {result.scientificName && result.scientificName !== 'N/A' && (
-                      <p className="text-xs text-muted-foreground mt-2 italic">
-                        Scientific: {result.scientificName}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </Card>
 
-              {/* Disease Analysis Card */}
-              <Card className="p-4 space-y-4">
-                <div className="flex items-start gap-3">
-                  {result.severity === 'Healthy' ? (
-                    <CheckCircle className="w-6 h-6 text-success flex-shrink-0 mt-1" />
-                  ) : (
-                    <AlertCircle className="w-6 h-6 text-warning flex-shrink-0 mt-1" />
-                  )}
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg mb-1">{result.disease}</h3>
-                    {result.diseaseHindi && (
-                      <p className="text-sm text-muted-foreground mb-2">{result.diseaseHindi}</p>
-                    )}
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Confidence: {result.confidence}
-                    </p>
-                    <div className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                      result.severity === 'Healthy' 
-                        ? 'bg-success/10 text-success' 
-                        : result.severity === 'Mild' 
-                        ? 'bg-warning/10 text-warning'
-                        : 'bg-destructive/10 text-destructive'
-                    }`}>
-                      {result.severity}
-                    </div>
-                  </div>
-                </div>
+                      <div className="border-t pt-4">
+                        <h4 className="font-semibold mb-2 text-foreground">Treatment{!isEnglish ? ` / ${localLabel}` : ''}</h4>
+                        <p className="text-sm text-muted-foreground mb-2">{result.treatment}</p>
+                        {!isEnglish && localTreatment && (
+                          <p className="text-sm text-muted-foreground bg-muted/50 p-2 rounded">{localTreatment}</p>
+                        )}
+                      </div>
 
-                <div className="border-t pt-4">
-                  <h4 className="font-semibold mb-2 text-foreground">Treatment / उपचार</h4>
-                  <p className="text-sm text-muted-foreground mb-2">{result.treatment}</p>
-                  {result.treatmentHindi && (
-                    <p className="text-sm text-muted-foreground bg-muted/50 p-2 rounded">{result.treatmentHindi}</p>
-                  )}
-                </div>
-
-                <div className="border-t pt-4">
-                  <h4 className="font-semibold mb-2 text-foreground">Prevention / रोकथाम</h4>
-                  <p className="text-sm text-muted-foreground mb-2">{result.prevention}</p>
-                  {result.preventionHindi && (
-                    <p className="text-sm text-muted-foreground bg-muted/50 p-2 rounded">{result.preventionHindi}</p>
-                  )}
-                </div>
+                      <div className="border-t pt-4">
+                        <h4 className="font-semibold mb-2 text-foreground">Prevention{!isEnglish ? ` / ${localLabel}` : ''}</h4>
+                        <p className="text-sm text-muted-foreground mb-2">{result.prevention}</p>
+                        {!isEnglish && localPrevention && (
+                          <p className="text-sm text-muted-foreground bg-muted/50 p-2 rounded">{localPrevention}</p>
+                        )}
+                      </div>
 
                 <div className="flex gap-3 pt-2">
                   <Button 
