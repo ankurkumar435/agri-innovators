@@ -7,6 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
+import {
+  isSpeechRecognitionSupported,
+  requestMicPermission,
+  speakText,
+  stopSpeaking,
+} from '@/lib/speech';
 
 const VOICE_LOCALES: { value: string; label: string }[] = [
   { value: 'auto', label: '🌐 Auto-detect' },
@@ -46,7 +52,10 @@ interface Message {
 }
 
 // Check for browser support
-const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+const SpeechRecognition =
+  typeof window !== 'undefined'
+    ? ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
+    : null;
 
 export const ChatBot: React.FC = () => {
   const { t } = useLanguage();
@@ -145,7 +154,7 @@ export const ChatBot: React.FC = () => {
   };
 
   const toggleListening = async () => {
-    if (!SpeechRecognition) {
+    if (!isSpeechRecognitionSupported()) {
       toast({
         title: "Not Supported",
         description: "Voice input is not supported in your browser. Please use Chrome or Edge.",
@@ -158,133 +167,65 @@ export const ChatBot: React.FC = () => {
       recognitionRef.current?.stop();
       stopMicStream();
       setIsListening(false);
-    } else {
-      try {
-        // Prime the mic with noise suppression, echo cancellation, and auto gain
-        // for a cleaner input signal before starting recognition.
-        if (navigator.mediaDevices?.getUserMedia) {
-          try {
-            micStreamRef.current = await navigator.mediaDevices.getUserMedia({
-              audio: {
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true,
-                channelCount: 1,
-                sampleRate: 48000,
-              } as MediaTrackConstraints,
-            });
-          } catch (e) {
-            console.warn('Enhanced audio constraints unavailable, falling back:', e);
-          }
-        }
+      return;
+    }
 
-        const effectiveLocale = voiceLocale === 'auto' ? detectAutoLocale(language) : voiceLocale;
-        recognitionRef.current.lang = effectiveLocale;
-        recognitionRef.current?.start();
-        setIsListening(true);
-        const label = VOICE_LOCALES.find(l => l.value === voiceLocale)?.label ?? effectiveLocale;
-        toast({
-          title: "Listening...",
-          description: `Speak now — recognizing as ${label}${voiceLocale === 'auto' ? ` (${effectiveLocale})` : ''}.`,
-        });
-      } catch (error) {
-        console.error('Error starting speech recognition:', error);
-        stopMicStream();
-        toast({
-          title: "Error",
-          description: "Could not start voice input. Please try again.",
-          variant: "destructive",
-        });
-      }
+    const result = await requestMicPermission();
+    if (result.ok === false) {
+      toast({
+        title: "Microphone unavailable",
+        description: result.message,
+        variant: "destructive",
+      });
+      return;
+    }
+    micStreamRef.current = result.stream;
+
+    try {
+      const effectiveLocale = voiceLocale === 'auto' ? detectAutoLocale(language) : voiceLocale;
+      recognitionRef.current.lang = effectiveLocale;
+      recognitionRef.current?.start();
+      setIsListening(true);
+      const label = VOICE_LOCALES.find(l => l.value === voiceLocale)?.label ?? effectiveLocale;
+      toast({
+        title: "Listening...",
+        description: `Speak now — recognizing as ${label}${voiceLocale === 'auto' ? ` (${effectiveLocale})` : ''}.`,
+      });
+    } catch (error) {
+      console.error('Error starting speech recognition:', error);
+      stopMicStream();
+      toast({
+        title: "Error",
+        description: "Could not start voice input. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
-  const speakMessage = (messageId: string, content: string) => {
-    // Check if speech synthesis is supported
-    if (!('speechSynthesis' in window)) {
-      toast({
-        title: "Not Supported",
-        description: "Text-to-speech is not supported in your browser.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Stop any currently playing speech
-    window.speechSynthesis.cancel();
-
+  const speakMessage = async (messageId: string, content: string) => {
+    // Toggle off if already speaking this message.
     if (speakingMessageId === messageId) {
+      stopSpeaking();
       setSpeakingMessageId(null);
       return;
     }
+
+    // Detect script → language.
+    const hasPunjabi = /[\u0A00-\u0A7F]/.test(content);
+    const hasDevanagari = /[\u0900-\u097F]/.test(content);
+    let langCode = 'en-IN';
+    if (hasPunjabi) langCode = 'pa-IN';
+    else if (hasDevanagari) langCode = 'hi-IN';
 
     setSpeakingMessageId(messageId);
-
-    try {
-      // Detect language from content
-      const hasHindi = /[\u0900-\u097F]/.test(content);
-      const hasPunjabi = /[\u0A00-\u0A7F]/.test(content);
-      const hasMarathi = /[\u0900-\u097F]/.test(content);
-      
-      let langCode = 'en-IN'; // Default to Indian English
-      if (hasPunjabi) {
-        langCode = 'pa-IN'; // Punjabi
-      } else if (hasHindi || hasMarathi) {
-        langCode = 'hi-IN'; // Hindi (also works for Marathi Devanagari script)
-      }
-
-      const utterance = new SpeechSynthesisUtterance(content);
-      utterance.lang = langCode;
-      utterance.rate = 0.95;
-      utterance.pitch = 1.05;
-      utterance.volume = 1;
-
-      // Pick the clearest available voice: prefer Google/Microsoft natural cloud voices.
-      const voices = window.speechSynthesis.getVoices();
-      const base = langCode.split('-')[0];
-      const langVoices = voices.filter(v => v.lang.toLowerCase().startsWith(base));
-      const score = (v: SpeechSynthesisVoice) => {
-        const n = v.name.toLowerCase();
-        let s = 0;
-        if (v.lang.toLowerCase() === langCode.toLowerCase()) s += 5;
-        if (n.includes('google')) s += 4;
-        if (n.includes('natural') || n.includes('neural') || n.includes('online')) s += 4;
-        if (n.includes('microsoft')) s += 3;
-        if (n.includes('female') || n.includes('aria') || n.includes('jenny') || n.includes('neerja') || n.includes('swara') || n.includes('heera')) s += 2;
-        if (!v.localService) s += 1;
-        return s;
-      };
-      const bestVoice = [...langVoices].sort((a, b) => score(b) - score(a))[0]
-        || voices.find(v => v.lang.toLowerCase().startsWith('en'));
-      if (bestVoice) {
-        utterance.voice = bestVoice;
-        utterance.lang = bestVoice.lang;
-      }
-
-      utterance.onend = () => {
+    await speakText(content, {
+      langCode,
+      onEnd: () => setSpeakingMessageId(null),
+      onError: (msg) => {
         setSpeakingMessageId(null);
-      };
-
-      utterance.onerror = (event) => {
-        console.error('Speech synthesis error:', event);
-        setSpeakingMessageId(null);
-        toast({
-          title: "Speech Error",
-          description: "Could not speak the message. Please try again.",
-          variant: "destructive",
-        });
-      };
-
-      window.speechSynthesis.speak(utterance);
-    } catch (error) {
-      console.error('Error generating speech:', error);
-      setSpeakingMessageId(null);
-      toast({
-        title: "Error",
-        description: "Could not generate speech. Please try again.",
-        variant: "destructive",
-      });
-    }
+        toast({ title: 'Speech Error', description: msg, variant: 'destructive' });
+      },
+    });
   };
 
   const quickQuestions = [
@@ -510,10 +451,10 @@ export const ChatBot: React.FC = () => {
             )}
           </Button>
         </form>
-        <div className="flex items-center justify-between gap-2 mt-3">
-          <label className="text-xs text-muted-foreground flex-shrink-0">Voice language</label>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-3">
+          <label className="text-xs text-muted-foreground">Voice language</label>
           <Select value={voiceLocale} onValueChange={setVoiceLocale} disabled={isListening}>
-            <SelectTrigger className="h-8 text-xs w-[200px]">
+            <SelectTrigger className="h-9 text-xs w-full sm:w-[220px]">
               <SelectValue placeholder="Auto-detect" />
             </SelectTrigger>
             <SelectContent className="max-h-72">

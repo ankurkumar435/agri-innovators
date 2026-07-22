@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { speakText, stopSpeaking } from '@/lib/speech';
 
 interface DiseaseResult {
   plantNameEnglish: string;
@@ -230,86 +231,34 @@ export const CropScanner: React.FC = () => {
 
   const playAudio = async () => {
     if (!result) return;
-    
     const text = getTTSText();
     if (!text) {
       toast.error('No text available for speech');
       return;
     }
 
-    // Check if Web Speech API is supported
-    if (!('speechSynthesis' in window)) {
-      toast.error('Speech synthesis not supported in this browser');
-      return;
-    }
+    const useHindi = language === 'hi' || language === 'mr' || language === 'pa';
+    const targetLang = useHindi ? 'hi-IN' : 'en-US';
 
     setIsLoadingAudio(true);
-    
-    try {
-      const useHindi = language === 'hi' || language === 'mr' || language === 'pa';
-      
-      // Cancel any ongoing speech
-      window.speechSynthesis.cancel();
-      
-      const utterance = new SpeechSynthesisUtterance(text);
-      const targetLang = useHindi ? 'hi-IN' : 'en-US';
-      utterance.lang = targetLang;
-      utterance.rate = 0.95;
-      utterance.pitch = 1.05;
-      utterance.volume = 1;
-
-      // Pick the clearest available voice (prefer natural cloud voices).
-      const voices = window.speechSynthesis.getVoices();
-      const base = targetLang.split('-')[0];
-      const langVoices = voices.filter(v => v.lang.toLowerCase().startsWith(base));
-      const score = (v: SpeechSynthesisVoice) => {
-        const n = v.name.toLowerCase();
-        let s = 0;
-        if (v.lang.toLowerCase() === targetLang.toLowerCase()) s += 5;
-        if (n.includes('google')) s += 4;
-        if (n.includes('natural') || n.includes('neural') || n.includes('online')) s += 4;
-        if (n.includes('microsoft')) s += 3;
-        if (n.includes('female') || n.includes('aria') || n.includes('jenny') || n.includes('neerja') || n.includes('swara')) s += 2;
-        if (!v.localService) s += 1;
-        return s;
-      };
-      const preferredVoice = [...langVoices].sort((a, b) => score(b) - score(a))[0];
-      if (preferredVoice) {
-        utterance.voice = preferredVoice;
-        utterance.lang = preferredVoice.lang;
-      }
-      
-      utterance.onstart = () => {
+    await speakText(text, {
+      langCode: targetLang,
+      onStart: () => {
         setIsPlaying(true);
         setIsLoadingAudio(false);
-      };
-      
-      utterance.onend = () => {
-        setIsPlaying(false);
-      };
-      
-      utterance.onerror = (event) => {
-        console.error('Speech error:', event);
+      },
+      onEnd: () => setIsPlaying(false),
+      onError: (msg) => {
         setIsPlaying(false);
         setIsLoadingAudio(false);
-        toast.error('Failed to play speech');
-      };
-      
-      window.speechSynthesis.speak(utterance);
-      
-    } catch (error) {
-      console.error('TTS error:', error);
-      toast.error('Failed to generate speech');
-      setIsLoadingAudio(false);
-    }
+        toast.error(msg);
+      },
+    });
   };
 
+
   const stopAudio = () => {
-    // Stop Web Speech API
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
-    // Also stop any audio element if present
+    stopSpeaking();
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
