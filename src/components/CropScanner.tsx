@@ -588,6 +588,70 @@ export const CropScanner: React.FC = () => {
           )}
         </>
       )}
+
+      {/* Analyze language picker */}
+      <Dialog open={showAnalyzeLangDialog} onOpenChange={setShowAnalyzeLangDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Languages className="w-5 h-5" /> Choose analysis language
+            </DialogTitle>
+            <DialogDescription>
+              In which language should the AI generate the plant analysis, treatment, and prevention?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto py-2">
+            {LANG_OPTIONS.map((l) => (
+              <Button
+                key={l.name}
+                variant="outline"
+                className="justify-start h-auto py-3"
+                onClick={() => {
+                  setShowAnalyzeLangDialog(false);
+                  analyzeCrop(l.name);
+                }}
+              >
+                <div className="text-left">
+                  <div className="font-semibold">{l.native}</div>
+                  <div className="text-xs text-muted-foreground">{l.name}</div>
+                </div>
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Listen language picker */}
+      <Dialog open={showListenLangDialog} onOpenChange={setShowListenLangDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Volume2 className="w-5 h-5" /> Listen in which language?
+            </DialogTitle>
+            <DialogDescription>
+              Pick the language you want the AI bot to speak the analysis in.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto py-2">
+            {LANG_OPTIONS.map((l) => (
+              <Button
+                key={l.name}
+                variant="outline"
+                className="justify-start h-auto py-3"
+                onClick={() => {
+                  setShowListenLangDialog(false);
+                  playAudioInLanguage(l.name, l.locale);
+                }}
+              >
+                <div className="text-left">
+                  <div className="font-semibold">{l.native}</div>
+                  <div className="text-xs text-muted-foreground">{l.name}</div>
+                </div>
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
