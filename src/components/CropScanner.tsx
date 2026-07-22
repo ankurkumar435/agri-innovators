@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Upload, X, Loader2, AlertCircle, CheckCircle, Leaf, Volume2, VolumeX, Square } from 'lucide-react';
+import { Camera, Upload, X, Loader2, AlertCircle, CheckCircle, Leaf, Volume2, VolumeX, Square, Languages } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -10,18 +11,39 @@ import { speakText, stopSpeaking } from '@/lib/speech';
 interface DiseaseResult {
   plantNameEnglish: string;
   plantNameHindi: string;
+  plantNameLocal?: string;
   scientificName: string;
   disease: string;
   diseaseHindi: string;
+  diseaseLocal?: string;
   confidence: string;
   severity: string;
   treatment: string;
   treatmentHindi: string;
+  treatmentLocal?: string;
   prevention: string;
   preventionHindi: string;
+  preventionLocal?: string;
   ttsTextEnglish?: string;
   ttsTextHindi?: string;
+  ttsTextLocal?: string;
+  language?: string;
 }
+
+// Supported languages with BCP-47 locales for Web Speech synthesis
+const LANG_OPTIONS: { name: string; locale: string; native: string }[] = [
+  { name: 'English', locale: 'en-IN', native: 'English' },
+  { name: 'Hindi', locale: 'hi-IN', native: 'हिन्दी' },
+  { name: 'Punjabi', locale: 'pa-IN', native: 'ਪੰਜਾਬੀ' },
+  { name: 'Marathi', locale: 'mr-IN', native: 'मराठी' },
+  { name: 'Bengali', locale: 'bn-IN', native: 'বাংলা' },
+  { name: 'Tamil', locale: 'ta-IN', native: 'தமிழ்' },
+  { name: 'Telugu', locale: 'te-IN', native: 'తెలుగు' },
+  { name: 'Gujarati', locale: 'gu-IN', native: 'ગુજરાતી' },
+  { name: 'Kannada', locale: 'kn-IN', native: 'ಕನ್ನಡ' },
+  { name: 'Malayalam', locale: 'ml-IN', native: 'മലയാളം' },
+  { name: 'Urdu', locale: 'ur-IN', native: 'اردو' },
+];
 
 export const CropScanner: React.FC = () => {
   const { language } = useLanguage();
@@ -33,6 +55,9 @@ export const CropScanner: React.FC = () => {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const [showAnalyzeLangDialog, setShowAnalyzeLangDialog] = useState(false);
+  const [showListenLangDialog, setShowListenLangDialog] = useState(false);
+  const [analysisLang, setAnalysisLang] = useState<string>('English');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
