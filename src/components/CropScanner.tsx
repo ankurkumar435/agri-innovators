@@ -195,23 +195,24 @@ export const CropScanner: React.FC = () => {
     }
   };
 
-  const analyzeCrop = async () => {
+  const analyzeCrop = async (chosenLanguage: string) => {
     if (!imagePreview) return;
 
     setIsAnalyzing(true);
     setResult(null);
+    setAnalysisLang(chosenLanguage);
 
     try {
-      console.log('Sending image for analysis...');
+      console.log('Sending image for analysis in', chosenLanguage);
       const { data, error } = await supabase.functions.invoke('analyze-crop', {
-        body: { image: imagePreview }
+        body: { image: imagePreview, language: chosenLanguage }
       });
 
       if (error) throw error;
 
       console.log('Analysis result:', data);
       setResult(data.analysis);
-      toast.success('Analysis complete!');
+      toast.success(`Analysis complete (${chosenLanguage})!`);
     } catch (error) {
       console.error('Analysis error:', error);
       toast.error('Failed to analyze crop. Please try again.');
@@ -230,44 +231,48 @@ export const CropScanner: React.FC = () => {
     }
   };
 
-  const getTTSText = () => {
-    if (!result) return '';
-    
-    // Use Hindi TTS for Hindi, Marathi, or Punjabi; otherwise English
-    const useHindi = language === 'hi' || language === 'mr' || language === 'pa';
-    
-    if (useHindi && result.ttsTextHindi) {
-      return result.ttsTextHindi;
-    }
-    if (result.ttsTextEnglish) {
-      return result.ttsTextEnglish;
-    }
-    
-    // Fallback: Generate TTS-friendly text from other fields
-    const plantName = useHindi ? result.plantNameHindi : result.plantNameEnglish;
-    const disease = useHindi ? result.diseaseHindi : result.disease;
-    const treatment = useHindi ? result.treatmentHindi : result.treatment;
-    
-    if (useHindi) {
-      return `यह ${plantName} है। स्थिति: ${disease}। गंभीरता: ${result.severity}। उपचार: ${treatment}`;
-    }
-    return `This is ${plantName}. Condition: ${disease}. Severity: ${result.severity}. Treatment: ${treatment}`;
-  };
-
-  const playAudio = async () => {
+  const playAudioInLanguage = async (chosenLanguage: string, locale: string) => {
     if (!result) return;
-    const text = getTTSText();
+
+    setIsLoadingAudio(true);
+
+    // Pick best text source: local match → hindi → english → generated fallback
+    let text = '';
+    if (chosenLanguage === analysisLang && result.ttsTextLocal) {
+      text = result.ttsTextLocal;
+    } else if (chosenLanguage === 'English' && result.ttsTextEnglish) {
+      text = result.ttsTextEnglish;
+    } else if (chosenLanguage === 'Hindi' && result.ttsTextHindi) {
+      text = result.ttsTextHindi;
+    }
+
+    // Need translation: use English source and translate on demand
     if (!text) {
+      const sourceText =
+        result.ttsTextEnglish ||
+        `This is ${result.plantNameEnglish}. Condition: ${result.disease}. Severity: ${result.severity}. Treatment: ${result.treatment}. Prevention: ${result.prevention}.`;
+      try {
+        const { data, error } = await supabase.functions.invoke('translate-text', {
+          body: { text: sourceText, targetLanguage: chosenLanguage },
+        });
+        if (error) throw error;
+        text = (data?.translated ?? '').trim();
+      } catch (err) {
+        console.error('Translation error:', err);
+        toast.error('Could not translate to ' + chosenLanguage + '. Playing English.');
+        text = sourceText;
+        locale = 'en-IN';
+      }
+    }
+
+    if (!text) {
+      setIsLoadingAudio(false);
       toast.error('No text available for speech');
       return;
     }
 
-    const useHindi = language === 'hi' || language === 'mr' || language === 'pa';
-    const targetLang = useHindi ? 'hi-IN' : 'en-US';
-
-    setIsLoadingAudio(true);
     await speakText(text, {
-      langCode: targetLang,
+      langCode: locale,
       onStart: () => {
         setIsPlaying(true);
         setIsLoadingAudio(false);
