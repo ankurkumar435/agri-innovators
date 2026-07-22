@@ -123,63 +123,14 @@
     -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    scroll-behavior: smooth;
-  }
-
-  html {
-    /* Tighter, snappier scroll physics */
-    scroll-padding-top: 1rem;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-    overscroll-behavior-y: none;
-    -webkit-overflow-scrolling: touch;
   }
 
-  /* Momentum scrolling for any internal scroll containers */
-  .scroll-smooth-y,
-  [data-scroll-container] {
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    scroll-behavior: smooth;
-  }
 
-  /*
-   * iOS Safari: nested scroll areas can "bounce" the whole page, which
-   * momentarily shifts fixed elements (bottom nav, modals) and breaks layout.
-   * Trap the bounce inside any element that actually scrolls.
-   */
-  [class*="overflow-y-auto"],
-  [class*="overflow-y-scroll"],
-  [class*="overflow-x-auto"],
-  [class*="overflow-x-scroll"],
-  [class*="overflow-auto"],
-  [class*="overflow-scroll"] {
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* Radix ScrollArea viewport is a nested scroller too */
-  [data-radix-scroll-area-viewport] {
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* Dialog / Sheet / Drawer content commonly overflow on mobile */
-  [role="dialog"],
-  [data-radix-dialog-content],
-  [data-vaul-drawer] {
-    overscroll-behavior: contain;
-  }
-
-  /* Respect reduced motion preferences */
-  @media (prefers-reduced-motion: reduce) {
-    html, body, .scroll-smooth-y, [data-scroll-container] {
-      scroll-behavior: auto;
-    }
-  }
 
 
 
