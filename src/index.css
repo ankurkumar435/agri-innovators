@@ -123,13 +123,36 @@
     -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  html {
+    /* Tighter, snappier scroll physics */
+    scroll-padding-top: 1rem;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     overscroll-behavior-y: none;
+    -webkit-overflow-scrolling: touch;
   }
+
+  /* Momentum scrolling for any internal scroll containers */
+  .scroll-smooth-y,
+  [data-scroll-container] {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    scroll-behavior: smooth;
+  }
+
+  /* Respect reduced motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    html, body, .scroll-smooth-y, [data-scroll-container] {
+      scroll-behavior: auto;
+    }
+  }
+
 
   /* Prevent iOS auto-zoom on focus by keeping form inputs at >=16px */
   @media (max-width: 640px) {
