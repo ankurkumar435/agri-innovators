@@ -29,7 +29,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   const { t } = useLanguage();
   
   return (
-    <div className="fixed bottom-4 left-4 right-4 z-50">
+    <div className="fixed left-3 right-3 z-50" style={{ bottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
       <div className="nav-floating max-w-md mx-auto">
         <div className="flex items-center justify-around py-3 px-2">
           {navigationItems.map((item) => {
