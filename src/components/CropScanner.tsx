@@ -146,6 +146,8 @@ export const CropScanner: React.FC = () => {
     if (ctx) {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const imageData = canvas.toDataURL('image/jpeg', 0.85);
+      setResult(null);
+      stopAudio();
       setImagePreview(imageData);
       stopCamera();
       toast.success('Image captured successfully!');
