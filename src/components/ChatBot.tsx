@@ -154,7 +154,7 @@ export const ChatBot: React.FC = () => {
   };
 
   const toggleListening = async () => {
-    if (!SpeechRecognition) {
+    if (!isSpeechRecognitionSupported()) {
       toast({
         title: "Not Supported",
         description: "Voice input is not supported in your browser. Please use Chrome or Edge.",
@@ -167,44 +167,38 @@ export const ChatBot: React.FC = () => {
       recognitionRef.current?.stop();
       stopMicStream();
       setIsListening(false);
-    } else {
-      try {
-        // Prime the mic with noise suppression, echo cancellation, and auto gain
-        // for a cleaner input signal before starting recognition.
-        if (navigator.mediaDevices?.getUserMedia) {
-          try {
-            micStreamRef.current = await navigator.mediaDevices.getUserMedia({
-              audio: {
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true,
-                channelCount: 1,
-                sampleRate: 48000,
-              } as MediaTrackConstraints,
-            });
-          } catch (e) {
-            console.warn('Enhanced audio constraints unavailable, falling back:', e);
-          }
-        }
+      return;
+    }
 
-        const effectiveLocale = voiceLocale === 'auto' ? detectAutoLocale(language) : voiceLocale;
-        recognitionRef.current.lang = effectiveLocale;
-        recognitionRef.current?.start();
-        setIsListening(true);
-        const label = VOICE_LOCALES.find(l => l.value === voiceLocale)?.label ?? effectiveLocale;
-        toast({
-          title: "Listening...",
-          description: `Speak now — recognizing as ${label}${voiceLocale === 'auto' ? ` (${effectiveLocale})` : ''}.`,
-        });
-      } catch (error) {
-        console.error('Error starting speech recognition:', error);
-        stopMicStream();
-        toast({
-          title: "Error",
-          description: "Could not start voice input. Please try again.",
-          variant: "destructive",
-        });
-      }
+    const result = await requestMicPermission();
+    if (!result.ok) {
+      toast({
+        title: "Microphone unavailable",
+        description: result.message,
+        variant: "destructive",
+      });
+      return;
+    }
+    micStreamRef.current = result.stream;
+
+    try {
+      const effectiveLocale = voiceLocale === 'auto' ? detectAutoLocale(language) : voiceLocale;
+      recognitionRef.current.lang = effectiveLocale;
+      recognitionRef.current?.start();
+      setIsListening(true);
+      const label = VOICE_LOCALES.find(l => l.value === voiceLocale)?.label ?? effectiveLocale;
+      toast({
+        title: "Listening...",
+        description: `Speak now — recognizing as ${label}${voiceLocale === 'auto' ? ` (${effectiveLocale})` : ''}.`,
+      });
+    } catch (error) {
+      console.error('Error starting speech recognition:', error);
+      stopMicStream();
+      toast({
+        title: "Error",
+        description: "Could not start voice input. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
