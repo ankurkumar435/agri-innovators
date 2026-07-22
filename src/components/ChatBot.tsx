@@ -7,6 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
+import {
+  isSpeechRecognitionSupported,
+  requestMicPermission,
+  speakText,
+  stopSpeaking,
+} from '@/lib/speech';
 
 const VOICE_LOCALES: { value: string; label: string }[] = [
   { value: 'auto', label: '🌐 Auto-detect' },
