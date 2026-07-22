@@ -11,6 +11,7 @@ const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB base64
 
 const bodySchema = z.object({
   image: z.string().min(1).max(MAX_IMAGE_SIZE),
+  language: z.string().min(2).max(40).optional(),
 });
 
 serve(async (req) => {
@@ -49,7 +50,8 @@ serve(async (req) => {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    const { image } = parsed.data;
+    const { image, language } = parsed.data;
+    const targetLang = language && language.trim() ? language.trim() : 'English';
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -63,31 +65,33 @@ serve(async (req) => {
 1. FIRST identify the plant/crop species
 2. Then detect any diseases, pests, or health issues
 
+The user's chosen output language is: ${targetLang}. Write treatment, prevention, disease name, and TTS text PRIMARILY in ${targetLang} (native script). Also include English and Hindi versions.
+
 Your response must be a valid JSON object with the following structure:
 {
-  "plantNameEnglish": "Common name of the plant in English (e.g., Rice, Wheat, Tomato, Mango)",
-  "plantNameHindi": "Name of the plant in Hindi (e.g., धान, गेहूं, टमाटर, आम)",
-  "scientificName": "Scientific/botanical name (e.g., Oryza sativa)",
-  "disease": "Name of the disease or 'Healthy Crop' if no issues detected",
-  "diseaseHindi": "Disease name in Hindi (e.g., पत्ती अंगमारी, स्वस्थ फसल)",
+  "plantNameEnglish": "Common name in English",
+  "plantNameHindi": "Common name in Hindi",
+  "plantNameLocal": "Common name in ${targetLang} (native script)",
+  "scientificName": "Scientific/botanical name",
+  "disease": "Disease name in English or 'Healthy Crop'",
+  "diseaseHindi": "Disease name in Hindi",
+  "diseaseLocal": "Disease name in ${targetLang} (native script)",
   "confidence": "High/Medium/Low",
   "severity": "Healthy/Mild/Moderate/Severe",
-  "treatment": "Detailed treatment recommendations in English - clear numbered steps",
-  "treatmentHindi": "Treatment recommendations in Hindi - clear numbered steps",
-  "prevention": "Prevention measures for future in English - clear numbered steps",
-  "preventionHindi": "Prevention measures in Hindi - clear numbered steps",
-  "ttsTextEnglish": "A natural, conversational summary for text-to-speech in English.",
-  "ttsTextHindi": "A natural, conversational summary for text-to-speech in Hindi."
+  "treatment": "Treatment steps in English",
+  "treatmentHindi": "Treatment steps in Hindi",
+  "treatmentLocal": "Treatment steps in ${targetLang} (native script)",
+  "prevention": "Prevention steps in English",
+  "preventionHindi": "Prevention steps in Hindi",
+  "preventionLocal": "Prevention steps in ${targetLang} (native script)",
+  "ttsTextEnglish": "Natural conversational summary in English for TTS",
+  "ttsTextHindi": "Natural conversational summary in Hindi for TTS",
+  "ttsTextLocal": "Natural conversational summary in ${targetLang} (native script) for TTS",
+  "language": "${targetLang}"
 }
 
-IMPORTANT for TTS text:
-- Write in a natural speaking style, as if explaining to a farmer
-- Avoid technical jargon, use simple words
-- Use complete sentences, no bullet points or numbers in TTS fields
-- Keep it concise but informative (3-5 sentences)
-- Don't use abbreviations
-
-Be specific and accurate in identifying the plant species. If you cannot identify the plant clearly, provide your best guess with lower confidence. If the image is not of a plant or crop, state that clearly.`;
+IMPORTANT for TTS text: natural speaking style for a farmer, no bullets/numbers, 3-5 sentences, no abbreviations.
+If ${targetLang} is English or Hindi, still fill the Local fields (they may duplicate English/Hindi).`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
