@@ -258,11 +258,7 @@ export const CropScanner: React.FC = () => {
 
 
   const stopAudio = () => {
-    // Stop Web Speech API
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
-    // Also stop any audio element if present
+    stopSpeaking();
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
