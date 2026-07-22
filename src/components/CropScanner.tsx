@@ -301,7 +301,7 @@ export const CropScanner: React.FC = () => {
     if (isPlaying) {
       stopAudio();
     } else {
-      playAudio();
+      setShowListenLangDialog(true);
     }
   };
 
