@@ -161,6 +161,10 @@ export const CropScanner: React.FC = () => {
         toast.error('Please upload an image file');
         return;
       }
+      // Clear previous analysis so language dialog shows again for new image
+      setResult(null);
+      stopAudio();
+
       
       const reader = new FileReader();
       reader.onload = (event) => {
