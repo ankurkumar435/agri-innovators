@@ -605,6 +605,9 @@ export const CropScanner: React.FC = () => {
                   </Button>
                 </div>
               </Card>
+                  </>
+                );
+              })()}
             </div>
           )}
         </>
