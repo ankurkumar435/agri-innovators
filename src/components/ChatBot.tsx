@@ -451,10 +451,10 @@ export const ChatBot: React.FC = () => {
             )}
           </Button>
         </form>
-        <div className="flex items-center justify-between gap-2 mt-3">
-          <label className="text-xs text-muted-foreground flex-shrink-0">Voice language</label>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-3">
+          <label className="text-xs text-muted-foreground">Voice language</label>
           <Select value={voiceLocale} onValueChange={setVoiceLocale} disabled={isListening}>
-            <SelectTrigger className="h-8 text-xs w-[200px]">
+            <SelectTrigger className="h-9 text-xs w-full sm:w-[220px]">
               <SelectValue placeholder="Auto-detect" />
             </SelectTrigger>
             <SelectContent className="max-h-72">
