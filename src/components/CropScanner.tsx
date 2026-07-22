@@ -146,6 +146,8 @@ export const CropScanner: React.FC = () => {
     if (ctx) {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const imageData = canvas.toDataURL('image/jpeg', 0.85);
+      setResult(null);
+      stopAudio();
       setImagePreview(imageData);
       stopCamera();
       toast.success('Image captured successfully!');
@@ -159,6 +161,10 @@ export const CropScanner: React.FC = () => {
         toast.error('Please upload an image file');
         return;
       }
+      // Clear previous analysis so language dialog shows again for new image
+      setResult(null);
+      stopAudio();
+
       
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -192,8 +198,10 @@ export const CropScanner: React.FC = () => {
         img.src = event.target?.result as string;
       };
       reader.readAsDataURL(file);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
+
 
   const analyzeCrop = async (chosenLanguage: string) => {
     if (!imagePreview) return;
