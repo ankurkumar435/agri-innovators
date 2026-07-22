@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Upload, X, Loader2, AlertCircle, CheckCircle, Leaf, Volume2, VolumeX, Square } from 'lucide-react';
+import { Camera, Upload, X, Loader2, AlertCircle, CheckCircle, Leaf, Volume2, VolumeX, Square, Languages } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -10,18 +11,39 @@ import { speakText, stopSpeaking } from '@/lib/speech';
 interface DiseaseResult {
   plantNameEnglish: string;
   plantNameHindi: string;
+  plantNameLocal?: string;
   scientificName: string;
   disease: string;
   diseaseHindi: string;
+  diseaseLocal?: string;
   confidence: string;
   severity: string;
   treatment: string;
   treatmentHindi: string;
+  treatmentLocal?: string;
   prevention: string;
   preventionHindi: string;
+  preventionLocal?: string;
   ttsTextEnglish?: string;
   ttsTextHindi?: string;
+  ttsTextLocal?: string;
+  language?: string;
 }
+
+// Supported languages with BCP-47 locales for Web Speech synthesis
+const LANG_OPTIONS: { name: string; locale: string; native: string }[] = [
+  { name: 'English', locale: 'en-IN', native: 'English' },
+  { name: 'Hindi', locale: 'hi-IN', native: 'हिन्दी' },
+  { name: 'Punjabi', locale: 'pa-IN', native: 'ਪੰਜਾਬੀ' },
+  { name: 'Marathi', locale: 'mr-IN', native: 'मराठी' },
+  { name: 'Bengali', locale: 'bn-IN', native: 'বাংলা' },
+  { name: 'Tamil', locale: 'ta-IN', native: 'தமிழ்' },
+  { name: 'Telugu', locale: 'te-IN', native: 'తెలుగు' },
+  { name: 'Gujarati', locale: 'gu-IN', native: 'ગુજરાતી' },
+  { name: 'Kannada', locale: 'kn-IN', native: 'ಕನ್ನಡ' },
+  { name: 'Malayalam', locale: 'ml-IN', native: 'മലയാളം' },
+  { name: 'Urdu', locale: 'ur-IN', native: 'اردو' },
+];
 
 export const CropScanner: React.FC = () => {
   const { language } = useLanguage();
@@ -33,6 +55,9 @@ export const CropScanner: React.FC = () => {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const [showAnalyzeLangDialog, setShowAnalyzeLangDialog] = useState(false);
+  const [showListenLangDialog, setShowListenLangDialog] = useState(false);
+  const [analysisLang, setAnalysisLang] = useState<string>('English');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -170,23 +195,24 @@ export const CropScanner: React.FC = () => {
     }
   };
 
-  const analyzeCrop = async () => {
+  const analyzeCrop = async (chosenLanguage: string) => {
     if (!imagePreview) return;
 
     setIsAnalyzing(true);
     setResult(null);
+    setAnalysisLang(chosenLanguage);
 
     try {
-      console.log('Sending image for analysis...');
+      console.log('Sending image for analysis in', chosenLanguage);
       const { data, error } = await supabase.functions.invoke('analyze-crop', {
-        body: { image: imagePreview }
+        body: { image: imagePreview, language: chosenLanguage }
       });
 
       if (error) throw error;
 
       console.log('Analysis result:', data);
       setResult(data.analysis);
-      toast.success('Analysis complete!');
+      toast.success(`Analysis complete (${chosenLanguage})!`);
     } catch (error) {
       console.error('Analysis error:', error);
       toast.error('Failed to analyze crop. Please try again.');
@@ -205,44 +231,48 @@ export const CropScanner: React.FC = () => {
     }
   };
 
-  const getTTSText = () => {
-    if (!result) return '';
-    
-    // Use Hindi TTS for Hindi, Marathi, or Punjabi; otherwise English
-    const useHindi = language === 'hi' || language === 'mr' || language === 'pa';
-    
-    if (useHindi && result.ttsTextHindi) {
-      return result.ttsTextHindi;
-    }
-    if (result.ttsTextEnglish) {
-      return result.ttsTextEnglish;
-    }
-    
-    // Fallback: Generate TTS-friendly text from other fields
-    const plantName = useHindi ? result.plantNameHindi : result.plantNameEnglish;
-    const disease = useHindi ? result.diseaseHindi : result.disease;
-    const treatment = useHindi ? result.treatmentHindi : result.treatment;
-    
-    if (useHindi) {
-      return `यह ${plantName} है। स्थिति: ${disease}। गंभीरता: ${result.severity}। उपचार: ${treatment}`;
-    }
-    return `This is ${plantName}. Condition: ${disease}. Severity: ${result.severity}. Treatment: ${treatment}`;
-  };
-
-  const playAudio = async () => {
+  const playAudioInLanguage = async (chosenLanguage: string, locale: string) => {
     if (!result) return;
-    const text = getTTSText();
+
+    setIsLoadingAudio(true);
+
+    // Pick best text source: local match → hindi → english → generated fallback
+    let text = '';
+    if (chosenLanguage === analysisLang && result.ttsTextLocal) {
+      text = result.ttsTextLocal;
+    } else if (chosenLanguage === 'English' && result.ttsTextEnglish) {
+      text = result.ttsTextEnglish;
+    } else if (chosenLanguage === 'Hindi' && result.ttsTextHindi) {
+      text = result.ttsTextHindi;
+    }
+
+    // Need translation: use English source and translate on demand
     if (!text) {
+      const sourceText =
+        result.ttsTextEnglish ||
+        `This is ${result.plantNameEnglish}. Condition: ${result.disease}. Severity: ${result.severity}. Treatment: ${result.treatment}. Prevention: ${result.prevention}.`;
+      try {
+        const { data, error } = await supabase.functions.invoke('translate-text', {
+          body: { text: sourceText, targetLanguage: chosenLanguage },
+        });
+        if (error) throw error;
+        text = (data?.translated ?? '').trim();
+      } catch (err) {
+        console.error('Translation error:', err);
+        toast.error('Could not translate to ' + chosenLanguage + '. Playing English.');
+        text = sourceText;
+        locale = 'en-IN';
+      }
+    }
+
+    if (!text) {
+      setIsLoadingAudio(false);
       toast.error('No text available for speech');
       return;
     }
 
-    const useHindi = language === 'hi' || language === 'mr' || language === 'pa';
-    const targetLang = useHindi ? 'hi-IN' : 'en-US';
-
-    setIsLoadingAudio(true);
     await speakText(text, {
-      langCode: targetLang,
+      langCode: locale,
       onStart: () => {
         setIsPlaying(true);
         setIsLoadingAudio(false);
@@ -271,7 +301,7 @@ export const CropScanner: React.FC = () => {
     if (isPlaying) {
       stopAudio();
     } else {
-      playAudio();
+      setShowListenLangDialog(true);
     }
   };
 
@@ -398,7 +428,7 @@ export const CropScanner: React.FC = () => {
             
             {!result && !isAnalyzing && (
               <Button 
-                onClick={analyzeCrop}
+                onClick={() => setShowAnalyzeLangDialog(true)}
                 className="w-full"
                 size="lg"
               >
@@ -558,6 +588,70 @@ export const CropScanner: React.FC = () => {
           )}
         </>
       )}
+
+      {/* Analyze language picker */}
+      <Dialog open={showAnalyzeLangDialog} onOpenChange={setShowAnalyzeLangDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Languages className="w-5 h-5" /> Choose analysis language
+            </DialogTitle>
+            <DialogDescription>
+              In which language should the AI generate the plant analysis, treatment, and prevention?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto py-2">
+            {LANG_OPTIONS.map((l) => (
+              <Button
+                key={l.name}
+                variant="outline"
+                className="justify-start h-auto py-3"
+                onClick={() => {
+                  setShowAnalyzeLangDialog(false);
+                  analyzeCrop(l.name);
+                }}
+              >
+                <div className="text-left">
+                  <div className="font-semibold">{l.native}</div>
+                  <div className="text-xs text-muted-foreground">{l.name}</div>
+                </div>
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Listen language picker */}
+      <Dialog open={showListenLangDialog} onOpenChange={setShowListenLangDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Volume2 className="w-5 h-5" /> Listen in which language?
+            </DialogTitle>
+            <DialogDescription>
+              Pick the language you want the AI bot to speak the analysis in.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto py-2">
+            {LANG_OPTIONS.map((l) => (
+              <Button
+                key={l.name}
+                variant="outline"
+                className="justify-start h-auto py-3"
+                onClick={() => {
+                  setShowListenLangDialog(false);
+                  playAudioInLanguage(l.name, l.locale);
+                }}
+              >
+                <div className="text-left">
+                  <div className="font-semibold">{l.native}</div>
+                  <div className="text-xs text-muted-foreground">{l.name}</div>
+                </div>
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
