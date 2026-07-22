@@ -106,7 +106,7 @@ If ${targetLang} is English or Hindi, still fill the Local fields (they may dupl
           {
             role: 'user',
             content: [
-              { type: 'text', text: 'Analyze this image. First identify the plant/crop species with names in both English and Hindi, then diagnose any diseases and provide treatment recommendations. Return response in JSON format.' },
+              { type: 'text', text: `Analyze this image. First identify the plant/crop species, then diagnose any diseases and provide treatment recommendations. Write the primary treatment, prevention, and TTS summary in ${targetLang}. Return response in JSON format.` },
               { type: 'image_url', image_url: { url: image } }
             ]
           }
