@@ -5,6 +5,7 @@ import { AuthDropdown } from '@/components/AuthDropdown';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { reverseGeocode } from '@/lib/geocode';
 
 export const UserHeader: React.FC = () => {
   const { user } = useAuth();
