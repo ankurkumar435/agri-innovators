@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { FarmerField } from '@/hooks/useFarmerFields';
+import { reverseGeocode } from '@/lib/geocode';
 
 const KEY = 'active_field_id';
 
