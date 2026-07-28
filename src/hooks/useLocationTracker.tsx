@@ -2,6 +2,7 @@ import { useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { isFieldLocationPinned } from '@/hooks/useActiveLocation';
+import { reverseGeocode } from '@/lib/geocode';
 
 interface LocationData {
   lat: number;
