@@ -9,6 +9,7 @@ import { useOfflineCache, getCacheAge } from '@/hooks/useOfflineCache';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNotificationPrefs, getNotificationPrefs } from '@/hooks/useNotificationPrefs';
+import { reverseGeocode, formatLocation } from '@/lib/geocode';
 
 interface WeatherAlert {
   type: 'warning' | 'watch' | 'advisory';
@@ -271,20 +272,19 @@ export const WeatherCard: React.FC = () => {
             console.log('Using browser geolocation:', { latitude, longitude });
             
             // Save location for logged-in users
+            let locationText = '';
             if (user) {
               try {
-                const response = await fetch(
-                  `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-                );
-                const geoData = await response.json();
-                
+                const geo = await reverseGeocode(latitude, longitude);
+                locationText = formatLocation(geo);
+
                 await supabase.from('user_locations').upsert({
                   user_id: user.id,
                   latitude,
                   longitude,
-                  city: geoData.city || '',
-                  region: geoData.principalSubdivision || '',
-                  country: geoData.countryName || '',
+                  city: geo.city,
+                  region: geo.region,
+                  country: geo.country,
                   updated_at: new Date().toISOString()
                 }, { onConflict: 'user_id' });
               } catch (err) {
@@ -292,7 +292,7 @@ export const WeatherCard: React.FC = () => {
               }
             }
 
-            await fetchWeatherForLocation(latitude, longitude);
+            await fetchWeatherForLocation(latitude, longitude, locationText);
             setLoading(false);
           },
           async (geoErr) => {
@@ -335,25 +335,19 @@ export const WeatherCard: React.FC = () => {
             // Update location in database for logged-in users
             if (user) {
               try {
-                const response = await fetch(
-                  `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-                );
-                const geoData = await response.json();
-                
-                const locationText = [geoData.city, geoData.principalSubdivision, geoData.countryName]
-                  .filter(Boolean)
-                  .join(', ');
-                
+                const geo = await reverseGeocode(latitude, longitude);
+                const locationText = formatLocation(geo);
+
                 await supabase.from('user_locations').upsert({
                   user_id: user.id,
                   latitude,
                   longitude,
-                  city: geoData.city || '',
-                  region: geoData.principalSubdivision || '',
-                  country: geoData.countryName || '',
+                  city: geo.city,
+                  region: geo.region,
+                  country: geo.country,
                   updated_at: new Date().toISOString()
                 }, { onConflict: 'user_id' });
-                
+
                 await fetchWeatherForLocation(latitude, longitude, locationText);
               } catch (err) {
                 console.error('Error updating location:', err);

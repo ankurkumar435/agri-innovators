@@ -151,14 +151,17 @@ serve(async (req) => {
     const alerts = generateWeatherAlerts(nowCode, currentTemp, currentWindSpeed, currentHumidity);
 
     let locationName = `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+    let locationCountry = '';
     try {
       const geoRes = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=12&addressdetails=1`,
         { headers: { 'User-Agent': 'AgriInnovators/1.0' } }
       );
       if (geoRes.ok) {
         const geoData = await geoRes.json();
-        locationName = geoData.address?.city || geoData.address?.town || geoData.address?.village || geoData.address?.county || locationName;
+        const a = geoData.address ?? {};
+        locationName = a.village || a.town || a.city || a.suburb || a.hamlet || a.municipality || a.county || a.state_district || locationName;
+        locationCountry = a.country || '';
       }
     } catch (geoError) {
       console.log('Geocoding failed, using coordinates as location name');
@@ -167,7 +170,7 @@ serve(async (req) => {
     const response = {
       current: { temp: currentTemp, condition: nowCondition, humidity: currentHumidity, windSpeed: currentWindSpeed, icon: '', main: nowCondition },
       forecast: dailyForecasts,
-      location: { name: locationName },
+      location: { name: locationName, country: locationCountry },
       alerts,
     };
 

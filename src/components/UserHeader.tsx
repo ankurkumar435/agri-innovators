@@ -5,6 +5,7 @@ import { AuthDropdown } from '@/components/AuthDropdown';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { reverseGeocode } from '@/lib/geocode';
 
 export const UserHeader: React.FC = () => {
   const { user } = useAuth();
@@ -101,11 +102,8 @@ export const UserHeader: React.FC = () => {
             
             // Fetch location details
             try {
-              const response = await fetch(
-                `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-              );
-              const data = await response.json();
-              
+              const geo = await reverseGeocode(latitude, longitude);
+
               // Update location in database
               await supabase
                 .from('user_locations')
@@ -113,9 +111,9 @@ export const UserHeader: React.FC = () => {
                   user_id: user.id,
                   latitude,
                   longitude,
-                  city: data.city || '',
-                  region: data.principalSubdivision || '',
-                  country: data.countryName || '',
+                  city: geo.city,
+                  region: geo.region,
+                  country: geo.country,
                   updated_at: new Date().toISOString()
                 }, { onConflict: 'user_id' });
               
