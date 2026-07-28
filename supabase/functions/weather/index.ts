@@ -170,7 +170,7 @@ serve(async (req) => {
     const response = {
       current: { temp: currentTemp, condition: nowCondition, humidity: currentHumidity, windSpeed: currentWindSpeed, icon: '', main: nowCondition },
       forecast: dailyForecasts,
-      location: { name: locationName },
+      location: { name: locationName, country: locationCountry },
       alerts,
     };
 
