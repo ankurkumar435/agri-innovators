@@ -32,13 +32,10 @@ export const useActiveLocation = () => {
     // Reverse-geocode the field centroid for a friendly city label.
     let city = '', region = '', country = '';
     try {
-      const r = await fetch(
-        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${field.center_lat}&longitude=${field.center_lng}&localityLanguage=en`
-      );
-      const d = await r.json();
-      city = d.city || d.locality || '';
-      region = d.principalSubdivision || '';
-      country = d.countryName || '';
+      const d = await reverseGeocode(field.center_lat, field.center_lng);
+      city = d.city;
+      region = d.region;
+      country = d.country;
     } catch { /* ignore */ }
 
     await supabase.from('user_locations').upsert({
