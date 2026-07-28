@@ -64,7 +64,7 @@ serve(async (req) => {
       supabase.from('farmer_fields')
         .select('name, area_acres, crop, growth_stage, sowing_date, expected_harvest_date, center_lat, center_lng')
         .eq('user_id', userId),
-      supabase.from('yields').select('crop_type, season, quantity, unit').eq('user_id', userId)
+      supabase.from('yields').select('crop_type, season, area_planted, expected_yield, current_yield').eq('user_id', userId)
         .order('created_at', { ascending: false }).limit(5),
       supabase.from('farmer_activities').select('title, status, scheduled_time').eq('user_id', userId).limit(10),
     ]);
@@ -114,7 +114,7 @@ serve(async (req) => {
     }
 
     if (yields?.length) {
-      parts.push(`PAST YIELDS: ${yields.map((y: any) => `${y.crop_type} (${y.season || 'n/a'}) ${y.quantity ?? ''}${y.unit ?? ''}`).join('; ')}`);
+      parts.push(`PAST YIELDS: ${yields.map((y: any) => `${y.crop_type} (${y.season || 'n/a'}) on ${y.area_planted ?? '?'} acres, expected ${y.expected_yield ?? '?'} / current ${y.current_yield ?? '?'}`).join('; ')}`);
     }
 
     if (activities?.length) {
