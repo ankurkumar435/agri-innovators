@@ -17,20 +17,7 @@ export const useLocationTracker = () => {
   const lastUpdateRef = useRef<{ lat: number; lng: number } | null>(null);
 
   const fetchLocationDetails = async (latitude: number, longitude: number): Promise<{ city: string; region: string; country: string }> => {
-    try {
-      const response = await fetch(
-        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-      );
-      const data = await response.json();
-      return {
-        city: data.city || '',
-        region: data.principalSubdivision || '',
-        country: data.countryName || ''
-      };
-    } catch (error) {
-      console.error('Error fetching location details:', error);
-      return { city: '', region: '', country: '' };
-    }
+    return await reverseGeocode(latitude, longitude);
   };
 
   const updateLocationInDatabase = useCallback(async (locationData: LocationData) => {
