@@ -9,6 +9,7 @@ import { useOfflineCache, getCacheAge } from '@/hooks/useOfflineCache';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNotificationPrefs, getNotificationPrefs } from '@/hooks/useNotificationPrefs';
+import { reverseGeocode, formatLocation } from '@/lib/geocode';
 
 interface WeatherAlert {
   type: 'warning' | 'watch' | 'advisory';
