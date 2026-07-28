@@ -271,20 +271,19 @@ export const WeatherCard: React.FC = () => {
             console.log('Using browser geolocation:', { latitude, longitude });
             
             // Save location for logged-in users
+            let locationText = '';
             if (user) {
               try {
-                const response = await fetch(
-                  `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-                );
-                const geoData = await response.json();
-                
+                const geo = await reverseGeocode(latitude, longitude);
+                locationText = formatLocation(geo);
+
                 await supabase.from('user_locations').upsert({
                   user_id: user.id,
                   latitude,
                   longitude,
-                  city: geoData.city || '',
-                  region: geoData.principalSubdivision || '',
-                  country: geoData.countryName || '',
+                  city: geo.city,
+                  region: geo.region,
+                  country: geo.country,
                   updated_at: new Date().toISOString()
                 }, { onConflict: 'user_id' });
               } catch (err) {
@@ -292,7 +291,7 @@ export const WeatherCard: React.FC = () => {
               }
             }
 
-            await fetchWeatherForLocation(latitude, longitude);
+            await fetchWeatherForLocation(latitude, longitude, locationText);
             setLoading(false);
           },
           async (geoErr) => {
